@@ -1,0 +1,821 @@
+<!doctype html>
+<html lang="pt-br">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>DevDesk — prova de tema</title>
+<style>
+/* ══════════════════════════════════════════════════════════════════════
+   DEVDESK — PROVA DE TEMA
+   aplicativo de terminal, anos 90, em verde de fósforo
+
+   O QUE FAZ PARECER DAQUELA ÉPOCA — e não é fonte pixelada:
+
+     1. barra de menu no topo, com a letra de atalho sublinhada
+     2. caixa com o TÍTULO EM CIMA DA BORDA (o velho GroupBox)
+     3. botão em colchete:  [ CRIAR ] — sem pílula, sem sombra
+     4. barra de progresso feita de bloco:  ████████░░
+     5. rótulo em CAIXA ALTA com dois-pontos:  PROJETO:
+     6. tudo alinhado em grade de caractere, porque tudo era monoespaçado
+
+   E O QUE NÃO SE FAZ: caixa alta no CONTEÚDO. Texto em maiúscula é medido
+   como ~10 a 15% mais lento de ler, porque some o contorno da palavra que
+   o olho usa para reconhecer sem soletrar. Então caixa alta em rótulo,
+   menu e botão — poucas palavras, lidas uma vez. Nunca na frase, nunca no
+   código.
+   ══════════════════════════════════════════════════════════════════════ */
+
+/* ── AS FONTES, E O QUE ELAS NÃO PODEM TOCAR ──────────────────────────
+   --fonte-ui      a moldura: menu, rótulo, botão, árvore, terminal
+   --fonte-codigo  o código que VOCÊ escreveu
+
+   São duas de propósito. O retrô é da MOLDURA: os seus arquivos, o editor
+   e o VS Code ficam com a fonte que você já configurou. Um tema que muda
+   a fonte do código de quem está trabalhando não é tema, é atropelo. E
+   separadas assim, mexer na moldura amanhã não arrasta o código junto. */
+:root {
+  --fonte-ui: ui-monospace, "Cascadia Mono", Consolas, "DejaVu Sans Mono", monospace;
+  --fonte-codigo: ui-monospace, "Cascadia Mono", Consolas, "DejaVu Sans Mono", monospace;
+}
+
+:root,
+[data-tema="confortavel"] {
+  --fundo:        #0D120E;
+  --painel:       #141A15;
+  --painel-alto:  #1A221B;
+  --borda:        #2A3A2C;
+  --texto:        #B8C6B8;   /* 10,6:1 — do lado do VS Code Dark+ (11,2:1) */
+  --texto-fraco:  #8A9B8A;   /*  6,4:1 */
+  --texto-forte:  #DCE8DC;   /* 15,0:1 — só título, que é pouca letra */
+  --verde:        #00FF41;
+  --verde-suave:  #4ADE80;
+  --ambar:        #FFB000;
+  --vermelho:     #FF6B6B;
+  --azul:         #7FC4FF;
+  --codigo-fundo: #101610;
+  --chuva:        0.03;
+}
+
+[data-tema="fiel"] {
+  --fundo:        #000000;
+  --painel:       #030603;
+  --painel-alto:  #061006;
+  --borda:        #0F4A16;
+  --texto:        #00FF41;   /* verde puro no corpo — 99% da luz num canal */
+  --texto-fraco:  #00A82B;
+  --texto-forte:  #6BFF8E;
+  --verde:        #00FF41;
+  --verde-suave:  #00FF41;
+  --ambar:        #B7FF00;
+  --vermelho:     #FF3131;
+  --azul:         #00FFC8;
+  --codigo-fundo: #010401;
+  --chuva:        0.16;
+}
+
+* { box-sizing: border-box; }
+
+/* [hidden] PERDE para display:grid e display:flex, e perde calado. Já me
+   pegou no painel de verdade: três painéis apareceram empilhados porque o
+   display:flex vencia o [hidden]. O navegador não avisa; só a tela. */
+[hidden] { display: none !important; }
+
+body {
+  margin: 0; background: var(--fundo); color: var(--texto);
+  font: 13px/1.65 var(--fonte-ui);
+  transition: background .2s, color .2s;
+}
+#chuva { position: fixed; inset: 0; z-index: 0; opacity: var(--chuva);
+         pointer-events: none; transition: opacity .3s; }
+.tela { position: relative; z-index: 1; max-width: 1140px; margin: 0 auto; padding: 18px; }
+.rot { font-size: 11px; letter-spacing: .14em; text-transform: uppercase;
+       color: var(--texto-fraco); }
+
+/* ── controles da prova (não fazem parte do app) ──────────────────── */
+.controle { display: flex; flex-wrap: wrap; gap: 8px; align-items: center;
+            border: 1px dashed var(--borda); padding: 10px 14px; margin-bottom: 16px;
+            background: var(--painel); }
+.controle > b { color: var(--texto-forte); margin-right: 6px; }
+
+/* ── BOTÃO EM COLCHETE — a assinatura da época ────────────────────── */
+.bt { border: 0; background: none; color: var(--texto-fraco); font: inherit;
+      cursor: pointer; padding: 3px 2px; letter-spacing: .1em; text-transform: uppercase; }
+.bt::before { content: "[ " } .bt::after { content: " ]" }
+.bt:hover { color: var(--texto-forte) }
+.bt[aria-pressed="true"] { color: var(--verde) }
+.bt.forte { color: var(--verde) }
+
+/* ══════════════════════════════════════════════════════════════════════
+   CAIXA COM TÍTULO NA BORDA — o GroupBox de 1995. O título fica em cima
+   do traço, com o fundo atrás apagando aquele pedaço da linha. É o que
+   dava cara de "janela" antes de existir sombra e canto arredondado.
+   ══════════════════════════════════════════════════════════════════════ */
+.caixa { border: 1px solid var(--borda); position: relative;
+         padding: 14px 12px 12px; margin-top: 10px; }
+.caixa > .titulo { position: absolute; top: -.72em; left: 10px; padding: 0 7px;
+  background: var(--fundo); color: var(--verde);
+  font-size: 11px; letter-spacing: .14em; text-transform: uppercase; }
+.caixa > .titulo .fraco { color: var(--texto-fraco) }
+
+/* ── o app ────────────────────────────────────────────────────────── */
+.app { border: 1px solid var(--borda); background: var(--fundo);
+       display: grid; grid-template-columns: 190px 1fr 215px;
+       grid-template-rows: auto auto 1fr auto; min-height: 610px; }
+
+.menu { grid-column: 1/-1; display: flex; align-items: center; gap: 18px;
+        border-bottom: 1px solid var(--borda); padding: 6px 12px;
+        background: var(--painel-alto); font-size: 12px;
+        letter-spacing: .1em; text-transform: uppercase; }
+.menu a { color: var(--texto-fraco); cursor: default; padding: 1px 3px; }
+.menu a u { text-decoration: none; color: var(--verde) }
+.menu a:hover { color: var(--fundo); background: var(--verde) }
+.menu a:hover u { color: var(--fundo) }
+
+.faixa { grid-column: 1/-1; display: flex; align-items: center; gap: 12px;
+         border-bottom: 1px solid var(--borda); padding: 7px 12px; background: var(--painel); }
+.marca { display: flex; align-items: center; gap: 9px; color: var(--verde);
+         letter-spacing: .2em; font-weight: 700; }
+.marca svg { width: 34px; height: 20px; flex: none }
+
+/* O CANTO DO USUÁRIO */
+.eu { margin-left: auto; display: flex; align-items: center; gap: 9px }
+.cara { width: 30px; height: 30px; position: relative; flex: none; overflow: hidden;
+        border: 1px solid color-mix(in srgb, var(--verde) 45%, transparent);
+        background: var(--painel-alto); color: var(--verde);
+        display: grid; place-items: center; font-size: 11px; letter-spacing: .06em; }
+.cara img, .foto img { width: 100%; height: 100%; object-fit: cover; display: block;
+        filter: grayscale(1) contrast(1.15) brightness(.92); }
+.cara i, .foto i { display: none }
+.cara[data-duotone="sim"] i, .foto[data-duotone="sim"] i {
+        display: block; position: absolute; inset: 0;
+        background: var(--verde); mix-blend-mode: color; opacity: .55; }
+.eu .quem { font-size: 12px; color: var(--texto-forte); letter-spacing: .1em;
+            text-transform: uppercase; line-height: 1.3 }
+/* o estado como BLOCO, não como bolinha: bolinha é de 2015 */
+.eu .est { font-size: 11px; color: var(--cor-estado, var(--verde)); line-height: 1.3;
+           letter-spacing: .08em; text-transform: uppercase }
+.eu .est::before { content: "\25A0  " }
+
+.lado, .dir { padding: 12px; background: color-mix(in srgb, var(--painel) 45%, var(--fundo)) }
+.lado { border-right: 1px solid var(--borda) }
+.dir  { border-left: 1px solid var(--borda) }
+.dir .caminho { overflow-wrap: anywhere; color: var(--texto-fraco); font-size: 11.5px }
+
+.grupo { margin-bottom: 16px }
+.grupo > .rot { display: block; margin-bottom: 5px }
+.linha { padding: 2px 6px; color: var(--texto-fraco); cursor: default }
+.linha:hover { color: var(--texto) }
+.linha.aqui { background: var(--verde); color: var(--fundo) }
+.linha.aqui::before { content: "\25B8 " }
+.linha:not(.aqui)::before { content: "  " }
+
+.conversa { padding: 14px 16px; display: flex; flex-direction: column; gap: 14px }
+.fala { display: grid; grid-template-columns: 46px 1fr; gap: 6px; align-items: start }
+.fala > .de { color: var(--verde); letter-spacing: .08em }
+.fala.voce > .de { color: var(--ambar) }
+.fala > .txt b { color: var(--texto-forte) }
+
+.arvore { margin: 0; padding: 10px 12px; background: var(--codigo-fundo);
+          font-family: var(--fonte-codigo); font-size: 12.5px; line-height: 1.75;
+          color: var(--texto); white-space: pre; overflow-x: auto;
+          border: 1px solid var(--borda) }
+.nota { margin-top: 9px; color: var(--texto-fraco); font-size: 12px }
+.nota b { color: var(--ambar); font-weight: 400 }
+.acoes { margin-top: 10px; display: flex; gap: 14px }
+
+.term { grid-column: 1/-1; border-top: 1px solid var(--borda); background: var(--codigo-fundo);
+        padding: 8px 12px; font-family: var(--fonte-codigo); font-size: 12.5px; line-height: 1.7 }
+.term .ok { color: var(--verde) } .term .av { color: var(--ambar) }
+.term .cur { display: inline-block; width: 7px; height: 13px; background: var(--verde);
+             vertical-align: -2px; animation: pisca 1.1s steps(2) infinite }
+@keyframes pisca { 50% { opacity: 0 } }
+
+.bloco { font-family: var(--fonte-codigo); letter-spacing: -.5px }
+.bloco .cheio { color: var(--verde) } .bloco .vazio { color: var(--borda) }
+
+/* ══════════════════════════════════════════════════════════════════════
+   TELA DE ENTRADA
+   ══════════════════════════════════════════════════════════════════════ */
+.entrada { position: relative; overflow: hidden; border: 1px solid var(--borda);
+           min-height: 610px; display: grid; place-items: center;
+           background: radial-gradient(120% 90% at 50% 42%,
+             color-mix(in srgb, var(--painel) 70%, transparent), var(--fundo) 72%) }
+/* scanline + vinheta. A scanline tem que ser fraca a ponto de você não
+   conseguir apontar onde ela está: se dá para contar as linhas, cansa. */
+.entrada::after { content: ""; position: absolute; inset: 0; pointer-events: none;
+  background: repeating-linear-gradient(to bottom, rgba(0,0,0,.17) 0 1px, transparent 1px 3px),
+              radial-gradient(120% 100% at 50% 50%, transparent 52%, rgba(0,0,0,.6));
+  mix-blend-mode: multiply }
+.entrada[data-crt="nao"]::after { display: none }
+
+.painel-login { position: relative; z-index: 2; width: min(430px, 94%) }
+/* line-height 1 e nada de folga: com caractere de bloco, qualquer sobra
+   entre as linhas vira uma costura branca no meio da letra. */
+.banner { margin: 0 0 6px; color: var(--verde); font-family: var(--fonte-codigo);
+          font-size: 9px; line-height: 1; white-space: pre; text-align: center;
+          overflow-x: auto }
+/* O ESPAÇAMENTO TEM QUE CABER NA FONTE DO OUTRO. Com .34em o subtítulo
+   dava 430px num painel de 430px — encostado. A fonte monoespaçada do
+   Windows dele não é a mesma daqui, e "encostado" numa máquina é
+   "estourado" na outra. Aqui sobra folga, e o `min()` impede de vazar
+   mesmo que a fonte seja mais larga do que eu esperava. */
+.sub { text-align: center; color: var(--texto-fraco);
+       font-size: min(10.5px, 2.6vw); letter-spacing: .22em;
+       text-transform: uppercase; margin-bottom: 18px;
+       overflow-wrap: anywhere }
+
+.ident { display: grid; grid-template-columns: 88px 1fr; gap: 14px; align-items: center }
+.foto { width: 88px; height: 88px; position: relative; cursor: pointer; overflow: hidden;
+        border: 1px solid color-mix(in srgb, var(--verde) 45%, transparent);
+        background: var(--painel-alto); display: grid; place-items: center }
+/* cantos de mira — detalhe de interface militar, muito da época */
+.foto::before { content: ""; position: absolute; inset: 4px; z-index: 3; pointer-events: none;
+  background:
+    linear-gradient(currentColor 0 0) 0 0/10px 1px no-repeat,
+    linear-gradient(currentColor 0 0) 0 0/1px 10px no-repeat,
+    linear-gradient(currentColor 0 0) 100% 0/10px 1px no-repeat,
+    linear-gradient(currentColor 0 0) 100% 0/1px 10px no-repeat,
+    linear-gradient(currentColor 0 0) 0 100%/10px 1px no-repeat,
+    linear-gradient(currentColor 0 0) 0 100%/1px 10px no-repeat,
+    linear-gradient(currentColor 0 0) 100% 100%/10px 1px no-repeat,
+    linear-gradient(currentColor 0 0) 100% 100%/1px 10px no-repeat;
+  color: var(--verde); opacity: .85 }
+.foto .solte { font-size: 10px; letter-spacing: .1em; text-transform: uppercase;
+               color: var(--texto-fraco); text-align: center; padding: 0 8px; line-height: 1.5 }
+.foto.sobre { border-color: var(--verde) }
+.dados .chave { color: var(--texto-fraco); font-size: 11px; text-transform: uppercase;
+                letter-spacing: .1em }
+.dados .valor { color: var(--texto-forte); text-transform: uppercase; letter-spacing: .16em }
+
+.campo { margin-top: 16px }
+.campo label { display: block; font-size: 11px; letter-spacing: .16em;
+               text-transform: uppercase; color: var(--texto-fraco); margin-bottom: 5px }
+.campo input { width: 100%; background: var(--codigo-fundo); color: var(--texto);
+               border: 1px solid var(--borda); padding: 9px 11px;
+               font: 14px/1 var(--fonte-codigo); letter-spacing: .3em; outline: none }
+.campo input:focus { border-color: var(--verde) }
+/* A BARRA EM CIMA E O AVISO EMBAIXO. Lado a lado, um aviso comprido
+   quebrava em duas linhas e empurrava a barra para fora do lugar — o
+   texto mandava no layout em vez de o layout mandar no texto. */
+.medidor { margin-top: 7px; font-size: 11px; color: var(--texto-fraco) }
+.medidor .barra { display: block; font-family: var(--fonte-codigo);
+                  letter-spacing: -.5px; white-space: nowrap }
+.medidor .aviso { display: block; margin-top: 3px; line-height: 1.5 }
+
+.entrar { display: block; width: 100%; margin-top: 16px; padding: 10px;
+          border: 1px solid var(--verde); background: transparent; color: var(--verde);
+          font: 13px/1 var(--fonte-ui); letter-spacing: .3em; text-transform: uppercase;
+          cursor: pointer }
+.entrar:hover { background: var(--verde); color: var(--fundo) }
+/* SEM `min-height`. A versão anterior reservava 74px para as linhas de
+   partida; sem elas, aquele espaço vazio empurraria a caixa para cima da
+   tela sem motivo. Agora ele nasce com altura zero e só cresce quando
+   tem o que dizer. */
+.recado { margin-top: 14px; font-family: var(--fonte-codigo); font-size: 11.5px;
+          line-height: 1.85; color: var(--texto-fraco) }
+.recado .ok { color: var(--verde) } .recado .av { color: var(--ambar) }
+
+/* ── medição ──────────────────────────────────────────────────────── */
+table { border-collapse: collapse; width: 100%; font-size: 12.5px }
+th, td { text-align: left; padding: 5px 9px; border-bottom: 1px solid var(--borda) }
+th { color: var(--texto-fraco); font-size: 10.5px; letter-spacing: .1em;
+     text-transform: uppercase; font-weight: 400 }
+td.num { text-align: right; font-family: var(--fonte-codigo) }
+.bom { color: var(--verde-suave) } .limite { color: var(--ambar) } .ruim { color: var(--vermelho) }
+p { color: var(--texto-fraco); max-width: 74ch }
+p b { color: var(--texto); font-weight: 400 }
+pre.amostra { margin: 10px 0 0; padding: 12px; background: var(--codigo-fundo);
+              border: 1px solid var(--borda); overflow-x: auto;
+              font-family: var(--fonte-codigo); font-size: 12.5px; line-height: 1.75 }
+.k { color: var(--azul) } .s { color: var(--ambar) } .c { color: var(--texto-fraco) }
+
+@media (max-width: 880px) { .app { grid-template-columns: 1fr } .lado, .dir { display: none } }
+</style>
+</head>
+<body data-tema="confortavel">
+<canvas id="chuva"></canvas>
+
+<!-- ══════════════════════════════════════════════════════════════════
+     O MONOGRAMA — desenhado, não fotografado
+     Vetor de um traço só, na cor do tema, legível a 16 pixels. As
+     trilhas saem dos DOIS lados com cotovelo de 45°, que é como trilha
+     de placa realmente anda: ela vira em 45, nunca em 90, porque canto
+     reto concentra o ataque químico na corrosão da placa.
+     ══════════════════════════════════════════════════════════════════ -->
+<svg width="0" height="0" style="position:absolute">
+  <symbol id="mono" viewBox="0 0 40 24">
+    <g fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="square">
+      <path d="M14 4 H19 A8 8 0 0 1 19 20 H14 Z"/>
+      <!-- ESQUERDA: pastilha em 6/12/18, cotovelo de 45°, entra no D em 10/12/14 -->
+      <path d="M2 6 H6 L10 10 H14"/><path d="M2 12 H14"/><path d="M2 18 H6 L10 14 H14"/>
+      <!-- DIREITA: a esquerda ESPELHADA no eixo x=20. Cada ponto (x,y) virou
+           (40-x, y), então os dois lados são a mesma peça virada — e não duas
+           peças parecidas, que é o que estava antes e não fechava. -->
+      <path d="M26.8 10 H30 L34 6 H38"/><path d="M27 12 H38"/><path d="M26.8 14 H30 L34 18 H38"/>
+    </g>
+    <g fill="currentColor">
+      <circle cx="2" cy="6" r="1.4"/><circle cx="2" cy="12" r="1.4"/><circle cx="2" cy="18" r="1.4"/>
+      <circle cx="38" cy="6" r="1.4"/><circle cx="38" cy="12" r="1.4"/><circle cx="38" cy="18" r="1.4"/>
+    </g>
+  </symbol>
+</svg>
+
+<div class="tela">
+
+  <div class="controle">
+    <b>PROVA</b>
+    <button class="bt" id="btConf" aria-pressed="true">confortável</button>
+    <button class="bt" id="btFiel" aria-pressed="false">fiel ao filme</button>
+    <span style="color:var(--borda)">│</span>
+    <button class="bt" id="btTela" aria-pressed="false">tela de entrada</button>
+    <button class="bt" id="btEstado">trocar estado</button>
+    <span style="color:var(--borda)">│</span>
+    <button class="bt" id="btChuva" aria-pressed="true">chuva</button>
+    <button class="bt" id="btCRT" aria-pressed="true">scanline</button>
+    <button class="bt" id="btDuo" aria-pressed="true">duotone</button>
+    <span class="rot" id="dica" style="margin-left:auto"></span>
+  </div>
+
+  <!-- ═══ TELA DE ENTRADA ═══════════════════════════════════════════ -->
+  <div class="entrada" id="entrada" data-crt="sim" hidden>
+    <div class="painel-login">
+<pre class="banner">████▄ █████ █   █    ████▄ █████  ████ █   █    █████  ███
+█   █ █     █   █    █   █ █     █     █  █       █   █   █
+█   █ ████  █   █    █   █ ████   ███  ███        █   █████
+█   █ █      █ █     █   █ █         █ █  █       █   █   █
+████▀ █████   █      ████▀ █████ ████  █   █    █████ █   █</pre>
+      <div class="sub">inteligência artificial nativa</div>
+
+      <div class="caixa">
+        <div class="titulo">identificação</div>
+        <div class="ident">
+          <div class="foto" id="foto" data-duotone="sim" title="arraste a sua foto">
+            <span class="solte">arraste<br>a foto</span>
+          </div>
+          <div class="dados">
+            <div class="chave">usuário</div>
+            <div class="valor">eduardo</div>
+            <div class="chave" style="margin-top:8px">último acesso</div>
+            <div class="valor" style="letter-spacing:.08em">07/09 · 23:41</div>
+          </div>
+        </div>
+
+        <div class="campo">
+          <label for="senha">senha</label>
+          <input id="senha" type="password" autocomplete="off" spellcheck="false">
+          <div class="medidor">
+            <span class="barra" id="barra">──────────</span>
+            <span class="aviso" id="txtForca">digite para eu medir</span>
+          </div>
+        </div>
+
+        <button class="entrar" id="btEntrar">entrar</button>
+      </div>
+
+      <div class="recado" id="recado"></div>
+    </div>
+  </div>
+
+  <!-- ═══ O APP ═════════════════════════════════════════════════════ -->
+  <div class="app" id="app">
+
+    <nav class="menu">
+      <a><u>A</u>rquivo</a><a><u>E</u>ditar</a><a><u>P</u>rojeto</a>
+      <a><u>R</u>edes</a><a>A<u>j</u>uda</a>
+    </nav>
+
+    <div class="faixa">
+      <div class="marca"><svg><use href="#mono"/></svg> DEVDESK</div>
+      <div class="eu">
+        <div class="cara" id="cara2" data-duotone="sim">ED</div>
+        <div>
+          <div class="quem">eduardo</div>
+          <div class="est" id="txtEstado">esperando você</div>
+        </div>
+      </div>
+    </div>
+
+    <aside class="lado">
+      <div class="grupo">
+        <span class="rot">conversas:</span>
+        <div class="linha aqui">criar projeto php</div>
+        <div class="linha">erro compilação csc</div>
+        <div class="linha">o que mexi ontem</div>
+      </div>
+      <div class="grupo">
+        <span class="rot">painel:</span>
+        <div class="linha">arquivo</div>
+        <div class="linha">terminal</div>
+        <div class="linha">projeto</div>
+      </div>
+    </aside>
+
+    <main class="conversa">
+      <div class="fala voce">
+        <div class="de">ED&gt;</div>
+        <div class="txt">cria projeto api em php chamado loja</div>
+      </div>
+      <div class="fala">
+        <div class="de">IA&gt;</div>
+        <div class="txt">
+          Entendi: um <b>api</b> em <b>php</b> chamado <b>loja</b>.
+          <div class="caixa">
+            <div class="titulo">plano <span class="fraco">· 5 arquivos · 2 pastas</span></div>
+<pre class="arvore">loja/
+  .gitignore
+  README.md
+  index.php
+  rotas.php
+  testes/
+    test_rotas.php</pre>
+            <div class="nota">Tudo veio da memória exata — <b>nenhuma dúvida</b> desta vez.</div>
+            <div class="acoes">
+              <button class="bt forte">criar</button>
+              <button class="bt">não</button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </main>
+
+    <aside class="dir">
+      <div class="grupo">
+        <span class="rot">projeto ativo:</span>
+        <div style="color:var(--texto-forte);letter-spacing:.08em">DevDesk_AI</div>
+        <div class="caminho">C:\Users\Samsung\Projetos_Eduardo</div>
+      </div>
+      <div class="grupo">
+        <span class="rot">compositor:</span>
+        <div style="font-size:11.5px;color:var(--texto-fraco)">estrutura 77%</div>
+        <div class="bloco"><span class="cheio">████████</span><span class="vazio">██</span></div>
+        <div style="font-size:11.5px;color:var(--texto-fraco);margin-top:6px">extensão 85%</div>
+        <div class="bloco"><span class="cheio">████████▌</span><span class="vazio">█▌</span></div>
+      </div>
+      <div class="grupo">
+        <span class="rot">arquivos:</span>
+        <div class="linha">compositor.py</div>
+        <div class="linha">ensino.py</div>
+        <div class="linha">criar.py</div>
+      </div>
+    </aside>
+
+    <div class="term">
+      <div><span class="ok">✓</span> compositor · 3 redes · 60 formas na memória</div>
+      <div><span class="ok">✓</span> php 8.4.21 · python 3.11 · node 22</div>
+      <div><span class="av">!</span> intenção criar_projeto ainda não treinada</div>
+      <div>C:\&gt; <span class="cur"></span></div>
+    </div>
+  </div>
+
+  <!-- ═══ o logo ════════════════════════════════════════════════════ -->
+  <div class="caixa" style="margin-top:22px">
+    <div class="titulo">o logo dentro do programa</div>
+    <p>O logo em 3D, com fundo próprio, perspectiva e brilho, vira
+       <b>adesivo</b> colado numa interface chapada: ele traz o fundo dele
+       junto e briga com o resto. Num programa desta época o logo era feito
+       da mesma matéria que a tela — traço e caractere.</p>
+    <p>O monograma é vetor de um traço só, na cor do tema, e continua legível
+       em 16 pixels. As trilhas saem dos dois lados com cotovelo de 45°, que
+       é como trilha de placa anda de verdade — canto reto concentra o ataque
+       químico na corrosão, então placa nenhuma vira em 90°.
+       <b>O logo grande continua servindo</b> para o README, para o GitHub e
+       para a apresentação. Só não para dentro da tela.</p>
+    <div style="display:flex;gap:24px;align-items:center;margin-top:14px;color:var(--verde)">
+      <svg style="width:27px;height:16px"><use href="#mono"/></svg>
+      <svg style="width:40px;height:24px"><use href="#mono"/></svg>
+      <svg style="width:67px;height:40px"><use href="#mono"/></svg>
+      <svg style="width:120px;height:72px"><use href="#mono"/></svg>
+      <span class="rot">16 · 24 · 40 · 72 px de altura</span>
+    </div>
+  </div>
+
+  <!-- ═══ medição ═══════════════════════════════════════════════════ -->
+  <div class="caixa" style="margin-top:22px">
+    <div class="titulo">contraste · medido nesta página</div>
+    <p><b>Corrigi um argumento meu aqui.</b> Eu tinha dito que acima de 12:1
+       começa a doer. Fui medir os editores que as pessoas usam oito horas por
+       dia e o GitHub Dark dá <b>16,0:1</b> — a regra estava errada, e razão de
+       contraste sozinha não prevê conforto.</p>
+    <p>O que prevê é <b>de onde vem a luz</b>. Em <code>#00FF41</code>,
+       <b>99% da luminância vem do canal verde sozinho</b>: a fórmula pesa o
+       verde em 0,7152 e os outros dois quase não entram. Em
+       <code>#B8C6B8</code> esse mesmo canal carrega 75%, e o resto se
+       distribui. Cor pura, num canal só, sobre preto absoluto é o que faz a
+       letra sangrar brilho.</p>
+    <table>
+      <thead><tr><th>onde</th><th>cor</th><th>fundo</th>
+        <th style="text-align:right">contraste</th>
+        <th style="text-align:right">canal verde</th></tr></thead>
+      <tbody id="tabela"></tbody>
+    </table>
+    <div class="rot" style="margin:18px 0 6px">onde ficam os editores de verdade</div>
+    <table>
+      <thead><tr><th>editor</th><th>texto</th><th>fundo</th>
+        <th style="text-align:right">contraste</th>
+        <th style="text-align:right">canal verde</th></tr></thead>
+      <tbody id="referencia"></tbody>
+    </table>
+    <p style="margin-top:12px">Nenhum deles passa de ~80% na coluna da direita.
+       O <b>fiel ao filme</b> passa de 99% em tudo. É a única coluna onde os
+       dois temas ficam em mundos diferentes.</p>
+  </div>
+
+  <div class="caixa" style="margin-top:22px">
+    <div class="titulo">o teste que vale</div>
+    <p>Número não decide sozinho. Troque o tema e leia o bloco abaixo inteiro,
+       sem pressa, nos dois. Se em algum deles você sentir vontade de apertar
+       os olhos, já sabe a resposta.</p>
+<pre class="amostra"><span class="c"># o coração do compositor — a rede que decide QUAIS arquivos existem</span>
+<span class="k">def</span> papeis_de(self, ling, tipo, limiar=<span class="s">0.5</span>):
+    <span class="s">"""Os papéis acima do limiar, na ordem em que a rede acredita."""</span>
+    p = self.prever(ling, tipo)
+    escolhidos = [(self.papeis[i], <span class="k">float</span>(p[i])) <span class="k">for</span> i <span class="k">in</span> <span class="k">range</span>(<span class="k">len</span>(p))
+                  <span class="k">if</span> p[i] &gt;= limiar]
+    <span class="k">return</span> <span class="k">sorted</span>(escolhidos, key=<span class="k">lambda</span> x: -x[<span class="s">1</span>])
+
+<span class="c"># SIGMOID POR PAPEL, E NÃO SOFTMAX SOBRE OS PAPÉIS. A diferença não é</span>
+<span class="c"># detalhe: softmax obriga as saídas a somarem 1, ou seja, obriga a</span>
+<span class="c"># escolher UM papel. Um projeto tem vários ao mesmo tempo.</span></pre>
+  </div>
+</div>
+
+<script>
+// ══════════════════════════════════════════════════════════════════════
+//  O ESTADO DA REDE MANDA NA CHUVA
+//
+//  Enfeite que se mexe sozinho o tempo todo cansa e não diz nada. Amarrada
+//  ao estado, a chuva vira informação de canto de olho: você está lendo
+//  código e a periferia avisa que ela começou a pensar.
+//
+//    força 0-1   quanto aparece
+//    veloc ms    intervalo; 0 = congelada
+//    rastro 0-1  quanto apaga do quadro anterior; menor = rabo mais longo
+//
+//  No erro ela CONGELA. Parar de se mexer chama mais atenção do que
+//  acelerar, e é o que se quer quando deu errado.
+// ══════════════════════════════════════════════════════════════════════
+const ESTADOS = [
+  ["parado",                 "esperando você",      "var(--verde)",    0.03, 110, 0.10],
+  ["pensando",               "classificando",       "var(--azul)",     0.13,  45, 0.05],
+  ["investigando",           "colhendo evidência",  "var(--azul)",     0.16,  32, 0.04],
+  ["aguardando_confirmacao", "precisa do seu sim",  "var(--ambar)",    0.06, 160, 0.14],
+  ["aguardando_voce",        "não tenho certeza",   "var(--ambar)",    0.06, 160, 0.14],
+  ["erro",                   "deu erro",            "var(--vermelho)", 0.09,   0, 0.10],
+];
+let iEstado = 0;
+function porEstado(i){
+  const [nome, texto, cor, forca, veloc, rastro] = ESTADOS[i];
+  document.querySelector(".eu").style.setProperty("--cor-estado", cor);
+  document.getElementById("txtEstado").textContent = texto;
+  document.getElementById("dica").textContent =
+    nome + " · chuva " + Math.round(forca*100) + "%" + (veloc ? "" : " · congelada");
+  ajustarChuva(forca, veloc, rastro, cor);
+}
+document.getElementById("btEstado").onclick = () => {
+  iEstado = (iEstado + 1) % ESTADOS.length; porEstado(iEstado);
+};
+
+const btConf = document.getElementById("btConf"), btFiel = document.getElementById("btFiel");
+function tema(q){
+  document.body.dataset.tema = q;
+  btConf.setAttribute("aria-pressed", q === "confortavel");
+  btFiel.setAttribute("aria-pressed", q === "fiel");
+  porEstado(iEstado); medir();
+}
+btConf.onclick = () => tema("confortavel");
+btFiel.onclick = () => tema("fiel");
+
+// ── chuva ────────────────────────────────────────────────────────────
+const cv = document.getElementById("chuva"), ctx = cv.getContext("2d");
+const LETRAS = "アイウエオカキクケコサシスセソタチツテトナニヌネノ0123456789<>{}[]/\\=+*";
+let colunas = [], passo = 16;
+function ajustar(){
+  cv.width = innerWidth; cv.height = innerHeight;
+  colunas = new Array(Math.ceil(cv.width/passo)).fill(0)
+              .map(() => Math.random()*cv.height/passo | 0);
+}
+addEventListener("resize", ajustar); ajustar();
+function chover(){
+  ctx.fillStyle = "rgba(0,0,0," + (cv.dataset.rastro || 0.1) + ")";
+  ctx.fillRect(0, 0, cv.width, cv.height);
+  ctx.font = passo + "px monospace";
+  const nome = (cv.dataset.cor || "var(--verde)").replace(/var\(|\)/g, "");
+  ctx.fillStyle = getComputedStyle(document.body).getPropertyValue(nome).trim() || "#00FF41";
+  for (let i = 0; i < colunas.length; i++){
+    ctx.fillText(LETRAS[Math.random()*LETRAS.length|0], i*passo, colunas[i]*passo);
+    if (colunas[i]*passo > cv.height && Math.random() > 0.975) colunas[i] = 0;
+    colunas[i]++;
+  }
+}
+let timer = null, ligada = true, ultimo = [0.03, 110, 0.10, "var(--verde)"];
+
+// QUEM PEDIU MENOS MOVIMENTO RECEBE MENOS MOVIMENTO. O sistema tem essa
+// preferência e ela existe por um motivo — enxaqueca e vertigem são reais.
+const QUIETO = matchMedia("(prefers-reduced-motion: reduce)");
+function ajustarChuva(forca, veloc, rastro, cor){
+  ultimo = [forca, veloc, rastro, cor];
+  if (!ligada) return;
+  document.body.style.setProperty("--chuva", QUIETO.matches ? forca*0.4 : forca);
+  cv.dataset.rastro = rastro; cv.dataset.cor = cor;
+  clearInterval(timer); timer = null;
+  if (veloc > 0) timer = setInterval(chover, QUIETO.matches ? veloc*2 : veloc);
+}
+document.getElementById("btChuva").onclick = ev => {
+  ligada = !(ev.target.getAttribute("aria-pressed") === "true");
+  ev.target.setAttribute("aria-pressed", ligada);
+  cv.hidden = !ligada;
+  if (!ligada) { clearInterval(timer); timer = null; } else ajustarChuva(...ultimo);
+};
+
+// ── telas ────────────────────────────────────────────────────────────
+const entrada = document.getElementById("entrada"), appEl = document.getElementById("app");
+const btTela = document.getElementById("btTela");
+btTela.onclick = () => {
+  const vai = entrada.hidden;
+  entrada.hidden = !vai; appEl.hidden = vai;
+  btTela.setAttribute("aria-pressed", vai);
+  btTela.textContent = vai ? "ver o app" : "tela de entrada";
+  document.getElementById("recado").innerHTML = "";
+};
+document.getElementById("btCRT").onclick = ev => {
+  const on = ev.target.getAttribute("aria-pressed") === "true";
+  ev.target.setAttribute("aria-pressed", !on);
+  entrada.dataset.crt = on ? "nao" : "sim";
+};
+const fotoEl = document.getElementById("foto"), caraEl = document.getElementById("cara2");
+document.getElementById("btDuo").onclick = ev => {
+  const on = ev.target.getAttribute("aria-pressed") === "true";
+  ev.target.setAttribute("aria-pressed", !on);
+  const v = on ? "nao" : "sim";
+  fotoEl.dataset.duotone = v; caraEl.dataset.duotone = v;
+};
+
+// ── a sua foto ───────────────────────────────────────────────────────
+// FileReader lê DENTRO do navegador. Não existe servidor nesta página, e
+// é por isso que dá para experimentar com a sua cara sem pensar duas vezes.
+function mostrarFoto(arq){
+  if (!arq || !arq.type.startsWith("image/")) return;
+  const ler = new FileReader();
+  ler.onload = e => {
+    for (const alvo of [fotoEl, caraEl]) {
+      alvo.innerHTML = '<img alt="sua foto"><i></i>';
+      alvo.querySelector("img").src = e.target.result;
+    }
+  };
+  ler.readAsDataURL(arq);
+}
+fotoEl.addEventListener("dragover", e => { e.preventDefault(); fotoEl.classList.add("sobre"); });
+fotoEl.addEventListener("dragleave", () => fotoEl.classList.remove("sobre"));
+fotoEl.addEventListener("drop", e => {
+  e.preventDefault(); fotoEl.classList.remove("sobre"); mostrarFoto(e.dataTransfer.files[0]);
+});
+fotoEl.addEventListener("click", () => {
+  const inp = document.createElement("input");
+  inp.type = "file"; inp.accept = "image/*";
+  inp.onchange = () => mostrarFoto(inp.files[0]); inp.click();
+});
+
+// ══════════════════════════════════════════════════════════════════════
+//  A MEDIDA DA SENHA — e o que ela NÃO mede
+//
+//  A conta é a ingênua: bits = comprimento × log2(alfabeto). Ela vale como
+//  TETO, não como verdade. "Eduardo2026!" tem 12 caracteres em 4 classes e
+//  a conta dá 79 bits — mas quem ataca não sorteia letra por letra: tenta
+//  nome + ano + símbolo, que são milhares de tentativas, não trilhões.
+// ══════════════════════════════════════════════════════════════════════
+const inpSenha = document.getElementById("senha");
+function medirSenha(t){
+  if (!t) return { bits: 0, avisos: [] };
+  let a = 0;
+  if (/[a-z]/.test(t)) a += 26;
+  if (/[A-Z]/.test(t)) a += 26;
+  if (/[0-9]/.test(t)) a += 10;
+  if (/[^A-Za-z0-9]/.test(t)) a += 33;
+  const bits = t.length * Math.log2(a || 1);
+  const avisos = [];
+  if (t.length < 12) avisos.push("curta: abaixo de 12, o resto não salva");
+  if (/^[A-Za-z]+$/.test(t)) avisos.push("só letras");
+  if (/^[0-9]+$/.test(t)) avisos.push("só números");
+  if (/(19|20)\d\d/.test(t)) avisos.push("tem um ano — é a primeira coisa que se tenta");
+  if (/(.)\1{2,}/.test(t)) avisos.push("caractere repetido três vezes");
+  if (/^[a-zA-Z]+\d+[^A-Za-z0-9]*$/.test(t) && t.length < 20)
+    avisos.push("padrão palavra+número: a conta está mentindo para você");
+  return { bits, avisos };
+}
+function tempo(bits, porSeg){
+  const seg = Math.pow(2, bits-1)/porSeg;
+  if (seg > 31557600*1e6) return "mais que a idade do universo";
+  for (const [n, s] of [["ano",31557600],["dia",86400],["hora",3600],["minuto",60],["segundo",1]])
+    if (seg >= s) { const q = seg/s;
+      return q.toLocaleString("pt-BR",{maximumFractionDigits: q<10?1:0}) + " " + n + (q>=2?"s":""); }
+  return "instantâneo";
+}
+inpSenha.oninput = () => {
+  const { bits, avisos } = medirSenha(inpSenha.value);
+  // SE HÁ AVISO, O NÚMERO NÃO PODE APARECER COMO SE FOSSE BOM. Na primeira
+  // versão desta tela o medidor dizia "tem um ano, é a primeira coisa que
+  // se tenta" e mostrava 79 bits em verde ao lado. Duas informações
+  // contrárias na mesma linha, e a bonita ganha — é assim que medidor de
+  // senha ensina errado o mundo inteiro.
+  const suspeita = avisos.length > 0;
+  const cheios = Math.max(0, Math.min(10, Math.round(bits/12)));
+  const cor = suspeita ? "var(--ambar)"
+            : bits < 40 ? "var(--vermelho)" : bits < 70 ? "var(--ambar)" : "var(--verde)";
+  document.getElementById("barra").innerHTML = inpSenha.value
+    ? `<span style="color:${cor}">${"█".repeat(cheios)}</span>` +
+      `<span style="color:var(--borda)">${"─".repeat(10-cheios)}</span>` +
+      `<span style="color:${cor}"> ${suspeita ? "teto " : ""}${bits.toFixed(0)} bits</span>`
+    : "──────────";
+  const txt = document.getElementById("txtForca");
+  if (!inpSenha.value) { txt.textContent = "digite para eu medir"; txt.style.color = ""; return; }
+  if (avisos.length) { txt.textContent = avisos[0]; txt.style.color = "var(--ambar)"; }
+  else {
+    // 10^10 tentativas/s é uma placa boa contra hash rápido. Com scrypt bem
+    // configurado a mesma placa faz ~10^4 — e é essa diferença, não a
+    // senha, que faz o trabalho pesado.
+    txt.textContent = "força bruta: " + tempo(bits, 1e10);
+    txt.style.color = "var(--verde-suave)";
+  }
+};
+
+// A TELA DE ENTRADA NÃO É LUGAR DE RELATÓRIO. As linhas de partida
+// (numpy, número de classes, limiar) diziam a verdade, mas diziam para
+// quem só quer entrar — e o que a pessoa faz aqui é digitar a senha. Os
+// números continuam existindo e continuam medidos; o lugar deles é o
+// terminal de baixo, dentro do programa. Aqui a tela só fala DEPOIS que
+// você aperta, e só sobre o que você acabou de fazer.
+document.getElementById("btEntrar").onclick = () => {
+  const el = document.getElementById("recado");
+  el.innerHTML = '<div><span class="av">·</span> derivando chave · scrypt N=2^15 r=8 p=1…</div>';
+  setTimeout(() => el.insertAdjacentHTML("beforeend",
+    '<div><span class="ok">✓</span> isto é prova de tela — nada foi verificado</div>'), 700);
+};
+
+// ══════════════════════════════════════════════════════════════════════
+//  CONTRASTE E CANAL — a fórmula da WCAG, não um chute
+//    L = 0.2126·R + 0.7152·G + 0.0722·B  (em linear)
+//    razão = (Lclaro + 0.05) / (Lescuro + 0.05)
+//  O verde pesa 0.7152 — quase três quartos. É por isso que verde puro
+//  sobre preto dá contraste altíssimo, e exatamente por isso que brilha.
+// ══════════════════════════════════════════════════════════════════════
+function paraRGB(cor){
+  const d = document.createElement("div");
+  d.style.color = cor; document.body.appendChild(d);
+  const v = getComputedStyle(d).color.match(/\d+(\.\d+)?/g).map(Number);
+  d.remove(); return v.slice(0,3);
+}
+const lin = c => { c /= 255; return c <= 0.03928 ? c/12.92 : ((c+0.055)/1.055)**2.4; };
+function luminancia([r,g,b]){ return 0.2126*lin(r) + 0.7152*lin(g) + 0.0722*lin(b); }
+function razao(a,b){
+  const [x,y] = [luminancia(paraRGB(a)), luminancia(paraRGB(b))].sort((p,q)=>q-p);
+  return (x+0.05)/(y+0.05);
+}
+function fatiaVerde(cor){
+  const [r,g,b] = paraRGB(cor);
+  const t = 0.2126*lin(r) + 0.7152*lin(g) + 0.0722*lin(b);
+  return t ? 0.7152*lin(g)/t : 0;
+}
+const LINHAS = [
+  ["texto do corpo",  "--texto",       "--fundo"],
+  ["texto fraco",     "--texto-fraco", "--fundo"],
+  ["título",          "--texto-forte", "--fundo"],
+  ["verde de acento", "--verde",       "--fundo"],
+  ["código no bloco", "--texto",       "--codigo-fundo"],
+];
+const REFERENCIA = [
+  ["VS Code Dark+",  "#D4D4D4", "#1E1E1E"], ["GitHub Dark",  "#E6EDF3", "#0D1117"],
+  ["One Dark",       "#ABB2BF", "#282C34"], ["Dracula",      "#F8F8F2", "#282A36"],
+  ["Solarized Dark", "#839496", "#002B36"],
+];
+function amostra(c){
+  return `<span style="display:inline-block;width:10px;height:10px;background:${c};
+          border:1px solid var(--borda);vertical-align:-1px"></span>
+          <code style="font-size:11.5px">${c}</code>`;
+}
+function medir(){
+  const cs = getComputedStyle(document.body);
+  document.getElementById("tabela").innerHTML = LINHAS.map(([n,a,b]) => {
+    const ca = cs.getPropertyValue(a).trim(), cb = cs.getPropertyValue(b).trim();
+    const r = razao(ca,cb), v = fatiaVerde(ca);
+    const cr = r < 4.5 ? "ruim" : "bom";
+    // acima de 90% a luz está toda num canal só — é isso que sangra
+    const cvv = v > 0.90 ? "ruim" : v > 0.82 ? "limite" : "bom";
+    return `<tr><td>${n}</td><td>${amostra(ca)}</td>
+      <td><code style="font-size:11.5px">${cb}</code></td>
+      <td class="num ${cr}">${r.toFixed(1)}:1</td>
+      <td class="num ${cvv}">${(v*100).toFixed(0)}%</td></tr>`;
+  }).join("");
+  document.getElementById("referencia").innerHTML = REFERENCIA.map(([n,t,f]) =>
+    `<tr><td>${n}</td><td>${amostra(t)}</td>
+     <td><code style="font-size:11.5px">${f}</code></td>
+     <td class="num">${razao(t,f).toFixed(1)}:1</td>
+     <td class="num bom">${(fatiaVerde(t)*100).toFixed(0)}%</td></tr>`).join("");
+}
+
+// O estado inicial vai AQUI, no fim: `function` sobe por hoisting, mas
+// `const cv` não. Chamar porEstado() lá em cima estourava no canvas.
+medir();
+porEstado(0);
+</script>
+</body>
+</html>
