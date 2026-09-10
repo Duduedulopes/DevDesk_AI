@@ -1,0 +1,154 @@
+{
+ "linq": [
+  {
+   "marca": "A",
+   "titulo": "1. AS PERGUNTAS 7 E 8 (escritas a mao agora)",
+   "casos": [
+    {
+     "pedido": "soma o valor de transacoes concluidas",
+     "linq": "transacoes.Where(t => t.Status == StatusTransacao.Concluida).Sum(t => t.Valor)"
+    },
+    {
+     "pedido": "total de valor em transacoes",
+     "linq": "transacoes.Sum(t => t.Valor)"
+    },
+    {
+     "pedido": "quantas transacoes tem status igual a pendente",
+     "linq": "transacoes.Count(t => t.Status == StatusTransacao.Pendente)"
+    },
+    {
+     "pedido": "soma o taxa processamento de transacoes",
+     "linq": "transacoes.Sum(t => t.TaxaProcessamento)"
+    },
+    {
+     "pedido": "pega a primeira transacao com cliente nome igual a Ana Silva",
+     "linq": "transacoes.FirstOrDefault(t => t.ClienteNome == \"Ana Silva\")"
+    },
+    {
+     "pedido": "primeira transacao onde cliente nome igual a Cliente Inexistente",
+     "linq": "transacoes.FirstOrDefault(t => t.ClienteNome == \"Cliente Inexistente\")"
+    }
+   ]
+  },
+  {
+   "marca": "B",
+   "titulo": "2. AS OITO DO ARQUIVO, DO ZERO",
+   "casos": [
+    {
+     "pedido": "me mostra transacoes com status igual a concluida",
+     "linq": "transacoes.Where(t => t.Status == StatusTransacao.Concluida).ToList()"
+    },
+    {
+     "pedido": "me mostra so o codigo rastreio de transacoes",
+     "linq": "transacoes.Select(t => t.CodigoRastreio).ToList()"
+    },
+    {
+     "pedido": "ordena transacoes por data hora do maior para o menor",
+     "linq": "transacoes.OrderByDescending(t => t.DataHora).ToList()"
+    },
+    {
+     "pedido": "agrupa logs por severidade",
+     "linq": "logs.GroupBy(l => l.Severidade).ToList()"
+    },
+    {
+     "pedido": "existe transacoes com is fraude suspeita igual a sim",
+     "linq": "transacoes.Any(t => t.IsFraudeSuspeita == true)"
+    },
+    {
+     "pedido": "todas transacoes tem valor acima de 0",
+     "linq": "transacoes.All(t => t.Valor > 0m)"
+    },
+    {
+     "pedido": "soma o valor de transacoes",
+     "linq": "transacoes.Sum(t => t.Valor)"
+    },
+    {
+     "pedido": "pega a primeira transacao com cliente nome igual a Ana Silva",
+     "linq": "transacoes.FirstOrDefault(t => t.ClienteNome == \"Ana Silva\")"
+    }
+   ]
+  },
+  {
+   "marca": "C",
+   "titulo": "3. PERGUNTAS NOVAS, que nao existem em lugar nenhum",
+   "casos": [
+    {
+     "pedido": "quanto deu a soma das taxas processamento",
+     "linq": "transacoes.Sum(t => t.TaxaProcessamento)"
+    },
+    {
+     "pedido": "me traz os logs com modulo igual a Pagamentos",
+     "linq": "logs.Where(l => l.Modulo == \"Pagamentos\").ToList()"
+    },
+    {
+     "pedido": "tem log com codigo erro acima de 500",
+     "linq": "logs.Any(l => l.CodigoErro > 500)"
+    },
+    {
+     "pedido": "conta quantos logs tem severidade igual a error",
+     "linq": "logs.Count(l => l.Severidade == SeveridadeLog.Error)"
+    },
+    {
+     "pedido": "me lista as transacoes do maior valor para o menor",
+     "linq": "transacoes.OrderByDescending(t => t.Valor).ToList()"
+    },
+    {
+     "pedido": "separa as transacoes por categoria",
+     "linq": "transacoes.GroupBy(t => t.Categoria).ToList()"
+    },
+    {
+     "pedido": "acha a primeira transacao com valor acima de 5000",
+     "linq": "transacoes.FirstOrDefault(t => t.Valor > 5000m)"
+    },
+    {
+     "pedido": "todas as transacoes tem tentativas processamento igual a 1",
+     "linq": "transacoes.All(t => t.TentativasProcessamento == 1)"
+    }
+   ]
+  },
+  {
+   "marca": "D",
+   "titulo": "4. O EXERCICIO 7 DO ARQUIVO, no texto LITERAL do enunciado",
+   "casos": [
+    {
+     "pedido": "Calcular o montante total movimentado (Sum) em transações concluídas.",
+     "linq": "transacoes.Where(t => t.Status == StatusTransacao.Concluida).Sum(t => t.Valor)"
+    },
+    {
+     "pedido": "Calcular o total movimentado na categoria 'Tecnologia'.",
+     "linq": "transacoes.Where(t => t.Categoria == \"Tecnologia\").Sum(t => t.Valor)"
+    },
+    {
+     "pedido": "Contar (Count) quantas transações estão no status 'Pendente'.",
+     "linq": "transacoes.Count(t => t.Status == StatusTransacao.Pendente)"
+    },
+    {
+     "pedido": "Calcular a soma de todas as taxas de processamento arrecadadas.",
+     "linq": "transacoes.Sum(t => t.TaxaProcessamento)"
+    }
+   ]
+  },
+  {
+   "marca": "E",
+   "titulo": "5. O MESMO EXERCICIO 7, dito como quem conversa",
+   "casos": [
+    {
+     "pedido": "soma o valor das transacoes concluidas",
+     "linq": "transacoes.Where(t => t.Status == StatusTransacao.Concluida).Sum(t => t.Valor)"
+    },
+    {
+     "pedido": "soma o valor das transacoes com categoria igual a Tecnologia",
+     "linq": "transacoes.Where(t => t.Categoria == \"Tecnologia\").Sum(t => t.Valor)"
+    },
+    {
+     "pedido": "quantas transacoes estao pendentes",
+     "linq": "transacoes.Count(t => t.Status == StatusTransacao.Pendente)"
+    },
+    {
+     "pedido": "soma o taxa processamento de transacoes",
+     "linq": "transacoes.Sum(t => t.TaxaProcessamento)"
+    }
+   ]
+  }
+ ]
+}

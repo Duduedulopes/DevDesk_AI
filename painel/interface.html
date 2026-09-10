@@ -1,0 +1,3017 @@
+<!doctype html>
+<html lang="pt-BR"><head><meta charset="utf-8">
+<title>DevDesk AI</title>
+<style>
+  /* ══════════════════════════════════════════════════════════════════
+     TEMA — terminal de fósforo verde, anos 90
+
+     Os NOMES das variáveis são os mesmos de antes. Trocar o tema é trocar
+     doze valores; nenhuma regra lá embaixo precisou mudar de cor. Se as
+     cores estivessem escritas soltas no meio do CSS, isto aqui seria caça
+     ao tesouro — e uma cor esquecida ficaria ilegível sem ninguém ver.
+
+     `--sans` virou monoespaçada porque a MOLDURA é que é retrô: menu,
+     rótulo, botão, aba. `--mono` continua sendo a do código, e o editor
+     Monaco tem a fonte dele, que não se mexe. Os seus arquivos e o seu
+     VS Code não são afetados por nada daqui.
+     ══════════════════════════════════════════════════════════════════ */
+  :root{
+    --fundo:#0D120E; --painel:#141A15; --borda:#2A3A2C; --borda2:#1A221B;
+    --tinta:#B8C6B8;   /* 10,6:1 — do lado do VS Code Dark+, que dá 11,2:1 */
+    --tinta-forte:#DCE8DC;
+    --tinta2:#96A796;  /*  7,4:1 */
+    --tinta3:#7A8B7A;  /*  5,2:1 — rótulo, nunca texto longo */
+    --acento:#00FF41;  /* 13,9:1 · 99% num canal só: por isso SÓ acento */
+    --ok:#4ADE80; --alerta:#FFB000; --erro:#FF6B6B;
+    --codigo:#101610;  /* fundo dos blocos de código */
+    --tinta-cod:#9ECBBF;
+    --chuva:0.09;
+    --mono:"Cascadia Mono","Cascadia Code","Consolas",ui-monospace,monospace;
+    --sans:"Cascadia Mono","Consolas",ui-monospace,monospace;
+  }
+  /* ══════════════════════════════════════════════════════════════════
+     OS CINCO NÍVEIS DE CLARIDADE
+
+     O fundo muda e o TEXTO ACOMPANHA. Clarear tudo junto seria o erro:
+     o contraste desabaria e o mais claro ficaria o mais difícil de ler.
+
+     A PRIMEIRA VERSÃO DISTO NÃO FUNCIONAVA — e funcionava, no código. Os
+     cinco níveis trocavam as cores, o `data-luz` mudava, o CSS pegava.
+     Só que a faixa inteira ia de L* 2,1 a 12,1: DEZ pontos de claridade
+     divididos por quatro degraus, 2,5 cada. Um degrau só se enxerga a
+     partir de uns 4. Ou seja: cinco níveis que o olho lê como um só.
+
+     Prender o contraste em 10,5:1 nos cinco foi o que apertou a faixa —
+     fundo mais claro exige tinta mais clara, e a tinta acaba. Então o
+     contraste passou a ANDAR de propósito, de 11,1:1 no mais escuro a
+     9,0:1 no mais claro. Nove para um ainda é bem acima do 7:1 que a
+     WCAG pede no nível AAA para texto corrido; o que se ganha em troca
+     é uma faixa de L* 2,0 a 23,9, com degraus de 5 a 6.
+
+         nível          fundo    contraste   L*    degrau
+         1 mais escuro  #060806    11,1:1     2,0
+         2 escuro       #151815    10,5:1     7,8    5,8
+         3 meio         #212421    10,0:1    13,8    6,0
+         4 claro        #2B2F2B     9,5:1    18,9    5,1
+         5 mais claro   #363A36     9,0:1    23,9    5,0
+
+     Os números são medidos, não estimados: saíram da fórmula da WCAG
+     rodada sobre estas cores exatas.
+
+     Alt+1 a Alt+5, ou Visualizar → Claridade.
+     ══════════════════════════════════════════════════════════════════ */
+  html[data-luz="1"]{
+    --fundo:#060806; --painel:#101210; --painel-alto:#161816;
+    --borda:#232723; --borda2:#141614; --codigo:#010301;
+    --tinta:#ADC7AD;       /* 11,1:1 */
+    --tinta2:#90A690;      /*  7,7:1 */
+    --tinta3:#798B79;      /*  5,5:1 */
+    --tinta-forte:#C2E0C2; /* 14,1:1 */
+  }   /* 1 · mais escuro */
+  html[data-luz="2"]{
+    --fundo:#151815; --painel:#1C1F1C; --painel-alto:#212421;
+    --borda:#2F342F; --borda2:#1F221F; --codigo:#121512;
+    --tinta:#B3CDB3;       /* 10,5:1 */
+    --tinta2:#96AC96;      /*  7,4:1 */
+    --tinta3:#7E907E;      /*  5,3:1 */
+    --tinta-forte:#C9E7C9; /* 13,4:1 */
+  }   /* 2 · escuro */
+  html[data-luz="3"]{
+    --fundo:#212421; --painel:#282B28; --painel-alto:#2E312E;
+    --borda:#3B413B; --borda2:#2C2F2C; --codigo:#1E211E;
+    --tinta:#BBD5BB;       /* 10,0:1 */
+    --tinta2:#9DB39D;      /*  7,0:1 */
+    --tinta3:#849684;      /*  5,0:1 */
+    --tinta-forte:#D2F0D2; /* 12,8:1 */
+  }   /* 3 · meio */
+  html[data-luz="4"]{
+    --fundo:#2B2F2B; --painel:#323632; --painel-alto:#383C38;
+    --borda:#464D46; --borda2:#363A36; --codigo:#282C28;
+    --tinta:#C5DFC5;       /*  9,5:1 */
+    --tinta2:#A5BBA5;      /*  6,6:1 */
+    --tinta3:#8B9D8B;      /*  4,7:1 */
+    --tinta-forte:#DCFADC; /* 12,1:1 */
+  }   /* 4 · claro */
+  html[data-luz="5"]{
+    --fundo:#363A36; --painel:#3D413D; --painel-alto:#444844;
+    --borda:#515951; --borda2:#414541; --codigo:#333733;
+    --tinta:#D0EAD0;       /*  9,0:1 */
+    --tinta2:#AFC5AF;      /*  6,3:1 */
+    --tinta3:#94A694;      /*  4,5:1 */
+    --tinta-forte:#F2FFF2; /* 11,5:1 */
+  }   /* 5 · mais claro */
+
+  /* O "FIEL AO FILME" SAIU. Era verde puro sobre preto absoluto — bonito
+     de ver e cansativo de usar, 99% da luminância num canal só. Ficou um
+     tema só, o confortável, e por isso não há mais nada para escolher:
+     sem coluna de tema no menu, sem atalho, sem `data-tema` no CSS.
+     O que sobrou de escolha é a CLARIDADE, que são cinco níveis do mesmo
+     tema. */
+  *{box-sizing:border-box}
+  /* [hidden] PERDE para display:grid e display:flex, e perde CALADO. Já
+     me pegou duas vezes: os três painéis da direita empilhados, e agora a
+     tela de entrada que não sumia depois da senha certa — ela é
+     `display:grid` para centralizar, e o grid vencia o hidden. O navegador
+     não avisa; só a tela avisa. Uma linha, no alto, para sempre. */
+  [hidden]{display:none !important}
+  /* A BARRA DE ROLAGEM DO SISTEMA É DE OUTRO TEMA. No WebView2 ela vem
+     cinza, larga, com setinha — e num aplicativo verde de terminal ela
+     grita. Fina, sem seta, na cor da borda: continua funcionando e para
+     de brigar. */
+  ::-webkit-scrollbar{width:9px;height:9px}
+  ::-webkit-scrollbar-track{background:transparent}
+  ::-webkit-scrollbar-thumb{background:var(--borda)}
+  ::-webkit-scrollbar-thumb:hover{background:var(--acento)}
+  ::-webkit-scrollbar-corner{background:transparent}
+  /* O WebView2 num app desliga a seleção por padrão. Sem isto, a conversa
+     vira imagem: dá para ler e não dá para copiar. */
+  body,#fluxo,#editorvazio{-webkit-user-select:text;user-select:text;cursor:auto}
+  button,.aba,.escolha{-webkit-user-select:none;user-select:none}
+  /* 15px em vez de 14: a moldura monoespaçada desenha a letra mais
+     estreita que a Segoe UI que estava aqui antes, então o mesmo número
+     ficava menor na tela do que era. */
+  body{margin:0;height:100vh;background:var(--fundo);color:var(--tinta);
+       font:15px/1.6 var(--sans);overflow:hidden}
+  #janela{height:100vh;display:flex;flex-direction:column}
+  #corpo{flex:1;display:flex;min-height:0}
+
+  /* ── barra de menu ── */
+  #menu{display:flex;align-items:center;gap:2px;padding:0 8px;height:32px;flex:none;
+        background:var(--painel);border-bottom:1px solid var(--borda);
+        -webkit-user-select:none;user-select:none;position:relative;z-index:50}
+  #menu .m{padding:4px 10px;border-radius:5px;font-size:13px;color:var(--tinta2);cursor:default}
+  #menu .m:hover,#menu .m.viva{background:var(--borda2);color:var(--tinta)}
+  #titulo{margin-left:auto;font-size:12px;color:var(--tinta3)}
+  #sinal{font-size:12px;padding:0 9px 0 6px;cursor:default}
+  .gaveta{position:absolute;top:31px;background:var(--painel);border:1px solid var(--borda);
+          border-radius:0 0 8px 8px;box-shadow:0 12px 32px rgba(0,0,0,.5);min-width:230px;
+          padding:5px;z-index:60}
+  .gaveta div{padding:6px 12px;border-radius:5px;font-size:13px;color:var(--tinta2);cursor:pointer;
+              display:flex;gap:16px}
+  .gaveta div:hover{background:var(--acento);color:var(--codigo)}
+  .gaveta div span{margin-left:auto;font:11px var(--mono);opacity:.6}
+  .gaveta hr{border:0;border-top:1px solid var(--borda2);margin:4px 8px}
+
+  /* ── lateral esquerda ── */
+  #esquerda{width:262px;flex:none;background:var(--painel);display:flex;flex-direction:column;
+            overflow:hidden;padding:12px 10px}
+  #novo{background:var(--fundo);border:1px solid var(--borda);border-radius:8px;
+        padding:9px 12px;color:var(--tinta);font:13.5px var(--sans);cursor:pointer;
+        text-align:left;margin-bottom:14px}
+  #novo:hover{border-color:var(--acento)}
+  .grupo{font-size:10.5px;letter-spacing:.12em;text-transform:uppercase;color:var(--tinta3);
+         padding:10px 8px 5px}
+  .lista{overflow-y:auto;max-height:33vh}
+  .lista .item{padding:5px 9px;border-radius:6px;font-size:13px;color:var(--tinta2);
+               cursor:pointer;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .lista .item:hover{background:var(--borda2);color:var(--tinta)}
+  .lista .item.viva{background:var(--borda2);color:var(--tinta)}
+  .lista .item.pend{color:var(--alerta)}
+  .lista .vazio{padding:5px 9px;font-size:12px;color:var(--tinta3);font-style:italic}
+  /* a conversa no historico: nome que encolhe, acoes que so aparecem no hover */
+  #conversas{max-height:52vh}
+  #conversas .item{display:flex;align-items:center;gap:6px}
+  #conversas .item .nome{flex:1 1 auto;min-width:0;overflow:hidden;
+                         text-overflow:ellipsis;white-space:nowrap}
+  #conversas .item .n{flex:none;font:10px var(--mono);color:var(--tinta3)}
+  #conversas .item .acao{flex:none;color:var(--tinta3);font-size:13px;line-height:1;
+                         padding:0 2px;opacity:0;transition:opacity .1s}
+  #conversas .item:hover .acao{opacity:1}
+  #conversas .item .acao:hover{color:var(--erro)}
+  #conversas .item .acao.lapis:hover{color:var(--acento)}
+  #conversas .item input{flex:1 1 auto;min-width:0;background:var(--fundo);
+                         border:1px solid var(--acento);border-radius:4px;
+                         color:var(--tinta);font:13px var(--sans);padding:1px 5px;outline:none}
+
+  /* ── puxadores: os painéis são do usuário, não meus ── */
+  .puxador{width:4px;flex:none;cursor:col-resize;background:transparent}
+  .puxador:hover,.puxador.puxando{background:var(--acento)}
+
+  /* ── lateral ── */
+
+  /* ── centro ── */
+  main{flex:1;display:flex;flex-direction:column;min-width:0}
+  #fluxo{flex:1;overflow:auto;padding:26px 26px 8px}
+  /* CENTRALIZADA. Texto que atravessa a tela inteira é cansativo de ler —
+     a coluna estreita é o que faz uma conversa longa ficar legível. */
+  .centro{max-width:840px;margin:0 auto}
+  .cartao{margin:0 0 15px}
+
+  /* translúcido para a chuva passar por trás da conversa */
+  .voce{color:var(--tinta);background:color-mix(in srgb,var(--painel) 82%,transparent);
+        border:1px solid var(--borda);
+        border-radius:10px;padding:8px 13px;margin-left:auto;width:fit-content;max-width:600px}
+  .cartao:has(.voce){display:flex;justify-content:flex-end}
+  .ela{white-space:pre-wrap}
+  .ela b{color:var(--acento);font-weight:600}
+
+  .rotulo{display:flex;align-items:center;gap:7px;font-size:12px;color:var(--tinta3);margin-bottom:5px}
+  .rotulo .ic{width:15px;text-align:center}
+  /* o cursor que pisca enquanto ela pensa — o mesmo do terminal */
+  .cursor{display:inline-block;width:8px;height:14px;background:var(--acento);
+          vertical-align:-2px;animation:pisca 1s steps(2) infinite}
+  #pensando-agora .rotulo{color:var(--acento)}
+
+  .bloco{background:var(--codigo);border:1px solid var(--borda2);border-radius:8px;overflow:hidden}
+  .bloco .cmd{padding:9px 13px;font:12.5px/1.5 var(--mono);color:var(--tinta-cod);
+              border-bottom:1px solid var(--borda2);white-space:pre-wrap;word-break:break-all}
+  .bloco pre{margin:0;padding:9px 13px;font:12px/1.5 var(--mono);color:var(--tinta2);
+             white-space:pre-wrap;max-height:290px;overflow:auto}
+  .codigo{font-size:11px;padding:4px 13px;color:var(--tinta3);border-top:1px solid var(--borda2)}
+  .codigo.mau{color:var(--erro)}
+
+  /* ── o cartao que abre e fecha ── */
+  details.dobra{background:var(--codigo);border:1px solid var(--borda2);border-radius:8px}
+  details.dobra>summary{display:flex;align-items:center;gap:9px;padding:9px 13px;
+                        cursor:pointer;list-style:none;font:12.5px var(--mono)}
+  details.dobra>summary::-webkit-details-marker{display:none}
+  details.dobra>summary:hover{background:var(--painel);border-radius:8px}
+  details.dobra[open]>summary{border-bottom:1px solid var(--borda2);border-radius:8px 8px 0 0}
+  .dobra .seta{color:var(--tinta3);font-size:10px;width:9px;flex:none;
+               transition:transform .12s}
+  details.dobra[open] .seta{transform:rotate(90deg)}
+  .dobra .oque{color:var(--tinta-cod);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .dobra .sinal{margin-left:auto;flex:none;font-size:11.5px;padding-left:10px}
+  .dobra .sinal.bom{color:var(--ok)}
+  .dobra .sinal.mau{color:var(--erro)}
+  .dobra .quanto{flex:none;color:var(--tinta3);font-size:10.5px;padding-left:8px}
+  .dobra .selo{flex:none;font:10px var(--sans);color:var(--ok);border:1px solid var(--ok);
+               border-radius:4px;padding:1px 5px;opacity:.75}
+  .dobra pre{margin:0;padding:10px 13px;font:12px/1.5 var(--mono);color:var(--tinta2);
+             white-space:pre-wrap;word-break:break-word;max-height:340px;overflow:auto}
+
+  /* o cérebro: o que a rede calculou */
+  .cerebro{border:1px solid var(--borda);border-radius:8px;padding:11px 13px;
+           background:color-mix(in srgb,var(--painel) 82%,transparent)}
+  .barra{display:flex;align-items:center;gap:9px;margin:4px 0;font:12px/1 var(--mono)}
+  .barra .n{width:150px;color:var(--tinta2);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .barra .t{flex:1;height:7px;background:var(--codigo);border-radius:4px;overflow:hidden}
+  .barra .t i{display:block;height:100%;background:var(--acento);border-radius:4px}
+  .barra .v{width:48px;text-align:right;color:var(--tinta2)}
+  .barra.top .n{color:var(--tinta)} .barra.top .t i{background:var(--ok)}
+  .nota{margin-top:8px;font-size:11.5px;color:var(--tinta3)}
+  /* Clicar na intenção certa é o que ensina a rede. Antes era texto morto. */
+  .escolhas{display:flex;flex-wrap:wrap;gap:7px;margin-top:10px;
+            padding-top:10px;border-top:1px solid var(--borda2)}
+  .escolha{font:12px var(--sans);padding:5px 11px;border-radius:14px;cursor:pointer;
+           border:1px solid var(--borda);background:var(--fundo);color:var(--tinta2)}
+  .escolha:hover{border-color:var(--acento);color:var(--tinta)}
+  .escolha.feita{border-color:var(--ok);color:var(--ok);cursor:default}
+  .dica{width:100%;font-size:11px;color:var(--tinta3);margin-bottom:2px}
+
+  .gravou{display:flex;align-items:center;gap:9px;font-size:12.5px;color:var(--tinta2);
+          background:var(--codigo);border:1px solid var(--borda2);border-radius:8px;padding:8px 12px}
+  .gravou b{color:var(--acento);font-weight:500}
+  .gravou .det{font:11px var(--mono);color:var(--tinta3);white-space:nowrap}
+  .gravou button{margin-left:auto;background:transparent;border:1px solid var(--borda);
+                 border-radius:6px;color:var(--tinta3);font:11px var(--sans);
+                 padding:3px 9px;cursor:pointer}
+  .gravou button:hover{color:var(--alerta);border-color:var(--alerta)}
+  .aprendeu{border-left:2px solid var(--ok);padding:8px 0 8px 13px;font-size:13px}
+  .aprendeu.nao{border-left-color:var(--alerta)}
+  .aprendeu .det{font:11.5px var(--mono);color:var(--tinta3);margin-top:4px}
+
+  .achado{display:flex;align-items:center;gap:10px;padding:6px 10px;border-radius:6px;
+          font:12.5px var(--mono);color:var(--tinta2)}
+  .achado:hover{background:var(--painel)}
+  .achado .onde{color:var(--tinta3);font-size:11px;margin-left:auto;
+                overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:340px}
+  .achado button{font:11px var(--sans);padding:3px 9px;border-radius:5px;cursor:pointer;
+                 border:1px solid var(--borda);background:var(--fundo);color:var(--tinta2)}
+  .achado button:hover{border-color:var(--acento);color:var(--tinta)}
+
+  /* ação pendente */
+  .pendente{border:1px solid var(--alerta);border-radius:8px;background:var(--painel);padding:12px 14px}
+  .pendente .porque{font-size:12px;color:var(--alerta);margin-bottom:8px}
+  .pendente code{display:block;font:12.5px var(--mono);background:var(--codigo);padding:8px 11px;
+                 border-radius:6px;margin-bottom:10px;word-break:break-all;color:var(--alerta)}
+  .pendente pre.arvore{display:block;font:12.5px var(--mono);background:var(--codigo);padding:8px 11px;
+                 border-radius:6px;margin:4px 0 10px;word-break:break-all;color:var(--tinta)}
+  .pendente button{font:13px var(--sans);padding:6px 15px;border-radius:6px;cursor:pointer;
+                   border:1px solid var(--borda);background:var(--painel);color:var(--tinta);margin-right:8px}
+  .pendente button.sim{background:var(--alerta);border-color:var(--alerta);color:var(--fundo);font-weight:600}
+  .resolvido{opacity:.5}
+
+  /* ── painel da direita: as abas e o arquivo ── */
+  #direita{width:0;flex:none;background:var(--painel);border-left:1px solid var(--borda);
+           display:flex;flex-direction:column;overflow:hidden}
+  #direita.aberto{width:var(--w-direita,46%)}
+
+  /* a barra das tres abas do painel */
+  #painelabas{display:flex;gap:2px;padding:0 6px;background:var(--painel);
+              border-bottom:1px solid var(--borda);flex:none}
+  #painelabas .pa{padding:9px 11px 9px 13px;font:12.5px var(--sans);color:var(--tinta3);
+                  cursor:pointer;border-bottom:2px solid transparent;margin-bottom:-1px;
+                  display:inline-flex;align-items:center;gap:8px}
+  /* o X de fechar a aba: só aparece quando o mouse chega perto, senão
+     três X permanentes viram três convites a fechar sem querer */
+  #painelabas .pa .x{font:11px var(--mono);color:var(--tinta3);opacity:0;
+                     padding:0 1px;line-height:1}
+  #painelabas .pa:hover .x, #painelabas .pa.viva .x{opacity:.55}
+  #painelabas .pa .x:hover{color:var(--erro);opacity:1}
+  #painelabas .pa:hover{color:var(--tinta2)}
+  #painelabas .pa.viva{color:var(--tinta);border-bottom-color:var(--acento)}
+  #painelabas .conta{margin-left:6px;font:10.5px var(--mono);color:var(--tinta3);
+                     background:var(--borda2);border-radius:8px;padding:1px 5px}
+  #paneis{flex:1;min-height:0;display:flex;flex-direction:column}
+  #paneis>div{flex:1;min-height:0;display:flex;flex-direction:column;overflow:hidden}
+  /* PRECISA VIR DEPOIS, e nao e detalhe: o `display:flex` da linha de cima
+     vence o `display:none` que o navegador da de graca para [hidden]. Sem
+     esta linha os tres paineis ficam empilhados um sobre o outro e a aba
+     "escondida" continua na tela. O teste no navegador pegou. */
+  #paneis>div[hidden]{display:none}
+
+  #p-terminal{overflow:auto;background:var(--fundo)}
+  #p-terminal .linha{padding:9px 14px;border-bottom:1px solid var(--borda2)}
+  #p-terminal .c{font:12px var(--mono);color:var(--acento)}
+  #p-terminal .c .seta{color:var(--tinta3);margin-right:6px}
+  #p-terminal pre{margin:6px 0 0;font:11.5px/1.5 var(--mono);color:var(--tinta2);
+                  white-space:pre-wrap;word-break:break-word;max-height:280px;overflow:auto}
+  #p-terminal .fim{font:10.5px var(--mono);color:var(--tinta3);margin-top:5px}
+  #p-terminal .fim.mau{color:var(--erro)}
+
+  #p-projeto{overflow:auto;background:var(--fundo);padding-bottom:8px}
+  #p-projeto .raiz{position:sticky;top:0;background:var(--painel);z-index:1;
+                   padding:6px 12px;border-bottom:1px solid var(--borda2);
+                   font:11.5px var(--mono);color:var(--tinta3);
+                   display:flex;align-items:center;gap:8px}
+  #p-projeto .raiz b{color:var(--tinta2);font-weight:500}
+  /* o X de fechar o projeto: abrir uma pasta tinha caminho, fechar não
+     tinha nenhum — quem abria ficava preso nela até reiniciar */
+  #p-projeto .raiz .fecha{margin-left:auto;flex:none;cursor:pointer;
+                          color:var(--tinta3);padding:0 1px 0 10px;font-size:12px}
+  #p-projeto .raiz .fecha:hover{color:var(--erro)}
+  #p-projeto .no{display:flex;align-items:center;gap:6px;padding:2.5px 12px 2.5px 0;
+                 font:12px var(--mono);color:var(--tinta2);cursor:pointer;white-space:nowrap}
+  #p-projeto .no:hover{background:var(--borda2);color:var(--tinta)}
+  #p-projeto .no .tri{flex:none;width:11px;font-size:9px;color:var(--tinta3);text-align:center}
+  #p-projeto .no .nm{overflow:hidden;text-overflow:ellipsis}
+  #p-projeto .no .nm.p{color:var(--tinta);}
+  #p-projeto .no .b{color:var(--tinta3);font-size:10.5px;margin-left:auto;padding-left:12px;flex:none}
+  #p-projeto .no .usar{margin-left:auto;flex:none;font:10px var(--sans);color:var(--tinta3);
+                       border:1px solid var(--borda);border-radius:4px;padding:0 5px;
+                       opacity:0;transition:opacity .1s}
+  #p-projeto .no:hover .usar{opacity:1}
+  #p-projeto .no .usar:hover{color:var(--acento);border-color:var(--acento)}
+  .vaziopainel{padding:30px 20px;font:12.5px var(--sans);color:var(--tinta3);
+               text-align:center;line-height:1.6}
+  #abas{display:flex;gap:1px;background:var(--borda2);border-bottom:1px solid var(--borda);
+        overflow-x:auto;flex:none}
+  #abas .aba{display:flex;align-items:center;gap:8px;padding:8px 12px;background:var(--painel);
+             font:12.5px var(--sans);color:var(--tinta3);cursor:pointer;white-space:nowrap}
+  #abas .aba.viva{background:var(--fundo);color:var(--tinta);
+                  box-shadow:inset 0 -2px 0 var(--acento)}
+  #abas .aba .x{color:var(--tinta3);font-size:15px;line-height:1}
+  #abas .aba .x:hover{color:var(--erro)}
+  /* a cabeca da aba Arquivo: caminho, estado do salvar, VS Code */
+  #cabeca{display:flex;align-items:center;gap:10px;padding:6px 12px;flex:none;
+          background:var(--painel);border-bottom:1px solid var(--borda2);
+          font:11.5px var(--mono);color:var(--tinta3)}
+  /* Sem `direction:rtl` aqui. Ele corta o comeco, que era o que eu queria,
+     mas tambem joga a barra inicial do caminho para o FIM — na tela saia
+     `tmp/dd/trabalho/exemplo.py/`, com uma barra que nao existe. A cabeca
+     mostra o caminho relativo a pasta da sessao, que ja e curto; o
+     absoluto fica no `title`. */
+  #cabeca .cam{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;
+               flex:1 1 auto;min-width:60px}
+  #cabeca button{background:var(--borda2);border:1px solid var(--borda);border-radius:6px;
+                 color:var(--tinta2);font:11px var(--sans);padding:3px 9px;cursor:pointer;flex:none}
+  #cabeca button:hover{color:var(--tinta);border-color:var(--acento)}
+  #cabeca button.salvar{background:var(--acento);border-color:var(--acento);
+                        color:var(--codigo);font-weight:600}
+  #cabeca button.salvar[disabled]{background:var(--borda2);border-color:var(--borda);
+                                  color:var(--tinta3);font-weight:400;cursor:default}
+  #abas .aba .sujo{color:var(--alerta);font-size:16px;line-height:1}
+
+  #editor{flex:1;min-height:0}
+  #editorvazio{flex:1;min-height:0;overflow:auto;background:var(--fundo)}
+  #editorvazio pre{margin:0;padding:12px 14px;font:12px/1.55 var(--mono);
+                   color:var(--tinta2);white-space:pre-wrap;word-break:break-word}
+
+  /* ── rodapé ── */
+  form{display:flex;flex-direction:column;gap:9px;padding:12px 26px 16px;background:var(--fundo);position:relative}
+  form>.centro{display:flex;gap:9px;width:100%}
+
+  /* ── o menu da barra / ── */
+  /* AS ESCOLHAS DE CORREÇÃO MORAM NA BORDA DE CIMA DA CAIXA, e não no
+     cartão. A intenção é dúvida da rede, e a pergunta feito na hora em
+     que ela aparecer: lá no meio da conversa o cartão vira parede; aqui
+     os bots pra errar ficam colados na mão que vai corrigir. Elas somem
+     no instante em que você escolhe — voltar a elas é reler a conversa.
+     É um div NORMAL do form (ao contrário do #barra, absoluto): abrir e
+     fechar empurra o rodapé, e o seu movimento mostra o que chegou. */
+  #escolhas{display:flex;flex-wrap:wrap;gap:7px;margin:0 0 10px;padding:9px 13px;
+            background:var(--painel);border:1px solid var(--borda);border-radius:10px}
+  #escolhas .dica{margin:0}
+  #barra{position:absolute;bottom:100%;left:50%;transform:translateX(-50%);
+         width:min(760px,calc(100% - 52px));background:var(--painel);
+         border:1px solid var(--borda);border-radius:10px;overflow:hidden;
+         box-shadow:0 -8px 30px #0008;margin-bottom:6px;max-height:340px;overflow-y:auto}
+  #barra .it{display:flex;align-items:baseline;gap:10px;padding:8px 13px;cursor:pointer}
+  #barra .it.viva{background:var(--borda2)}
+  #barra .it .c{font:12.5px var(--mono);color:var(--acento);flex:none}
+  #barra .it .a{font:12px var(--mono);color:var(--tinta3);flex:none}
+  #barra .it .d{font:12px var(--sans);color:var(--tinta3);margin-left:auto;
+                padding-left:14px;text-align:right}
+  #barra .it.viva .d{color:var(--tinta2)}
+  #barra .titulo{padding:7px 13px;font:11px var(--sans);color:var(--tinta3);
+                 background:var(--codigo);border-bottom:1px solid var(--borda2)}
+  input, #f textarea{flex:1;background:var(--fundo);border:1px solid var(--borda);
+        border-radius:8px;padding:13px 15px;color:var(--tinta);font:15px var(--sans);
+        outline:none}
+  input:focus, #f textarea:focus{border-color:var(--acento)}
+  /* A CAIXA DE ESCREVER QUEBRA A LINHA E CRESCE.
+     Era um <input>, e <input> nao quebra linha nunca — nao e questao de
+     CSS, e o que o elemento e: uma linha so, rolando para o lado. Texto
+     longo virava uma fita que so mostrava o fim.
+     `resize:none` porque quem manda no tamanho e o texto, nao a alcinha
+     do canto; `max-height` para a caixa nao comer a conversa inteira, e a
+     partir dali ela rola por dentro. O calculo da altura esta no JS, que
+     e onde da para medir o texto de verdade. */
+  /* A ALCINHA NATIVA DO CANTO NAO SERVE AQUI, e o motivo e geometrico:
+     ela so cresce para BAIXO, e a caixa mora colada no rodape da janela.
+     Para ganhar 150px de altura seria preciso arrastar o cursor 150px
+     para fora da tela. Por isso `resize:none` e uma alca minha na borda
+     de CIMA, que e o lado que tem espaco — e o gesto natural: puxar para
+     cima faz crescer. E o mesmo que todo chat faz. */
+  #f textarea{resize:none;overflow-y:auto;line-height:1.45;
+              min-height:47px;max-height:min(70vh,520px);display:block}
+  #puxa{position:absolute;left:0;right:0;top:0;height:10px;cursor:ns-resize;
+        z-index:3;touch-action:none}
+  #puxa::after{content:"";position:absolute;left:50%;top:4px;width:52px;height:2px;
+               transform:translateX(-50%);background:var(--borda2);transition:background .15s}
+  #puxa:hover::after, #puxa.puxando::after{background:var(--acento)}
+  #f textarea.mao{border-color:var(--acento)}
+  #f textarea::-webkit-scrollbar{width:8px}
+  #f textarea::-webkit-scrollbar-thumb{background:var(--borda2);border-radius:0}
+  /* o botao acompanha o RODAPE da caixa enquanto ela cresce, em vez de
+     esticar junto e virar um retangulo alto */
+  form>.centro{align-items:flex-end}
+  form>.centro button.env{height:47px;flex:none}
+  button.env{background:var(--acento);border:0;border-radius:8px;padding:0 17px;
+             color:var(--codigo);font-weight:600;cursor:pointer}
+  /* NOWRAP E O CAMINHO ENCOLHE. Com o painel da direita aberto a coluna
+     fica estreita e a barra quebrava em tres linhas, empurrando o rodape
+     para fora da tela. Quem encolhe e o caminho da pasta — o resto e curto
+     e precisa continuar legivel. */
+  .status{display:flex;gap:16px;padding:6px 26px;background:var(--codigo);border-top:1px solid var(--borda);
+          font:11.5px var(--mono);color:var(--tinta3);white-space:nowrap;align-items:center}
+  .status>span{flex:none}
+  /* Sem `direction:rtl`. Ele cortava o comeco, que era o que eu queria,
+     mas tambem jogava a primeira barra do caminho para o FIM: na tela
+     aparecia `/dd/trabalho/nucleo/`, com uma barra inventada — e no
+     Windows seria o `C:` que iria parar la. Quem encurta agora e o JS,
+     por segmento, que e exato. */
+  .status .pasta{color:var(--tinta2);flex:0 1 auto;min-width:0;
+                 overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  #cerebro-info{flex:0 1 auto;overflow:hidden;text-overflow:ellipsis}
+  .ponto{color:var(--ok)}
+  /* o estado, na barra de baixo */
+  .ponto.indo{color:var(--acento);animation:pulsa 1.1s ease-in-out infinite}
+  .ponto.freio{color:var(--alerta)}
+  .ponto.duvida{color:var(--alerta)}
+  .ponto.erro{color:var(--erro)}
+  @keyframes pulsa{0%,100%{opacity:1}50%{opacity:.25}}
+  #estado-diz{color:var(--tinta3)}
+  #estado-diz.freio,#estado-diz.duvida{color:var(--alerta)}
+  #estado-diz.erro{color:var(--erro)}
+
+  /* ══════════════════════════════════════════════════════════════════════
+     A CAMADA RETRÔ — vem no FIM de propósito
+
+     Tudo daqui para baixo é sobrescrita. Ficar no fim é o que faz vencer
+     sem eu precisar caçar e reescrever as regras de cima uma por uma —
+     e é o que deixa apagar o retrô inteiro removendo um bloco só.
+
+     O que faz parecer 1995, e nada disso é fonte pixelada:
+       1. canto reto em tudo. Canto arredondado é de 2010 para cá.
+       2. rótulo em CAIXA ALTA com dois-pontos
+       3. botão em colchete:  [ ENVIAR ]
+       4. caixa com o título EM CIMA da borda (o velho GroupBox)
+       5. bloco cheio no lugar da bolinha de status
+
+     E o que NÃO se faz: caixa alta no CONTEÚDO. Maiúscula é medida como
+     10 a 15% mais lenta de ler, porque some o contorno da palavra que o
+     olho usa para reconhecer sem soletrar. Caixa alta em rótulo e botão,
+     que são poucas palavras. Nunca na conversa, nunca no código.
+     ══════════════════════════════════════════════════════════════════════ */
+
+  /* 1 · nada de canto arredondado, em lugar nenhum */
+  #novo, .lista .item, .gaveta, .gaveta div, .bloco, details.dobra,
+  details.dobra>summary, details.dobra[open]>summary, .cerebro, .escolha,
+  .gravou, .gravou button, .achado, .achado button, .pendente, .pendente code,
+  .pendente button, .voce, #barra, #barra .it, input, #f textarea, button.env, #cabeca button,
+  .barra .t, .barra .t i, #p-projeto .no .usar, #painelabas .conta,
+  #conversas .item input, #conversas .item .acao { border-radius: 0 !important }
+
+  /* 2 · a moldura fala em caixa alta; a conversa não */
+  .grupo, #painelabas .pa, .rotulo, .dica, .status, #menu .m,
+  .vaziopainel, #cabeca button, .gravou button, .achado button {
+    letter-spacing: .1em; text-transform: uppercase; }
+  .grupo::after { content: ":" }
+
+  /* 3 · BOTÃO EM COLCHETE — a assinatura da época */
+  button.env, .escolha, .pendente button, #cabeca button,
+  .gravou button, .achado button, #p-projeto .no .usar {
+    background: transparent !important; border: 1px solid var(--borda);
+    color: var(--tinta2); font-family: var(--sans); font-weight: 400 !important; }
+  button.env::before, .escolha::before, .pendente button::before { content: "[ " }
+  button.env::after,  .escolha::after,  .pendente button::after  { content: " ]" }
+  button.env { color: var(--acento); border-color: var(--acento); padding: 0 14px }
+  button.env:hover { background: var(--acento) !important; color: var(--fundo) }
+  .pendente button.sim { color: var(--acento); border-color: var(--acento) }
+  .pendente button.sim:hover { background: var(--acento) !important; color: var(--fundo) }
+  .escolha:hover, #cabeca button:hover, .gravou button:hover, .achado button:hover {
+    border-color: var(--acento); color: var(--acento) }
+  #cabeca button.salvar { color: var(--acento); border-color: var(--acento) }
+  #novo { border-color: var(--borda); color: var(--acento);
+          text-transform: uppercase; letter-spacing: .12em; font-size: 12px }
+  #novo:hover { background: var(--acento); color: var(--fundo) }
+
+  /* 4 · seleção com bloco na frente, não com pílula colorida */
+  .lista .item.viva, #abas .aba.viva { background: var(--borda2) !important;
+    color: var(--tinta) !important; box-shadow: none !important }
+  .lista .item.viva::before { content: "\25B8 "; color: var(--acento) }
+  #painelabas .pa.viva { border-bottom-color: var(--acento); color: var(--acento) }
+  #abas .aba.viva { border-bottom: 2px solid var(--acento) }
+
+  /* 5 · o cartão da rede vira caixa com título na borda */
+  .cerebro { position: relative; margin-top: 14px; padding-top: 15px }
+  .cerebro::before { content: "A REDE"; position: absolute; top: -.72em; left: 10px;
+    padding: 0 7px; background: var(--fundo); color: var(--acento);
+    font: 10.5px var(--sans); letter-spacing: .14em }
+  .pendente { position: relative; margin-top: 14px; border-color: var(--alerta) }
+  .pendente::before { content: "PRECISA DO SEU SIM"; position: absolute; top: -.72em;
+    left: 10px; padding: 0 7px; background: var(--fundo); color: var(--alerta);
+    font: 10.5px var(--sans); letter-spacing: .14em }
+
+  /* 6 · barra de progresso de BLOCO, não de pílula */
+  .barra .t { height: 9px; background: var(--codigo); border: 1px solid var(--borda) }
+  .barra .t i { background: var(--acento) }
+
+  /* 7 · o ponto de status vira bloco cheio */
+  .ponto { font-size: 10px }
+  .ponto::before { content: "\25A0" }
+  .ponto { color: transparent }
+  .ponto::before { color: var(--ok) }
+  .ponto.indo::before   { color: var(--acento) }
+  .ponto.freio::before,
+  .ponto.duvida::before { color: var(--alerta) }
+  .ponto.erro::before   { color: var(--erro) }
+
+  /* 8 · a chuva de código, atrás de tudo e sem pegar clique */
+  #chuva { position: fixed; inset: 0; z-index: 0; pointer-events: none;
+           opacity: var(--chuva); transition: opacity .35s }
+  #janela { position: relative; z-index: 1 }
+  #esquerda, #direita, #menu, .status, form { background-color: color-mix(
+    in srgb, var(--painel) 88%, transparent) }
+
+  /* 9 · o monograma na barra de menu */
+  #marca { display: flex; align-items: center; gap: 8px; margin-right: 10px;
+           color: var(--acento); flex: none }
+  #marca svg { width: 30px; height: 18px }
+  #titulo { letter-spacing: .18em; text-transform: uppercase; color: var(--tinta3) }
+
+  /* 10 · o input do rodapé, com cursor de bloco quando vazio */
+  input, #f textarea { font-family: var(--sans); letter-spacing: .02em }
+  input::placeholder, #f textarea::placeholder {
+    color: var(--tinta3); text-transform: none; letter-spacing: 0 }
+
+  /* ══════════════════════════════════════════════════════════════════════
+     TELA DE ENTRADA
+     ══════════════════════════════════════════════════════════════════════ */
+  #entrada { position: fixed; inset: 0; z-index: 200; display: grid;
+             place-items: center;
+             /* TRANSLÚCIDO, e não opaco. A chuva é uma camada abaixo desta;
+                com o fundo cheio ela existia e ninguém via. 88% segura a
+                leitura do texto e deixa o resto passar. */
+             background: color-mix(in srgb, var(--fundo) 88%, transparent);
+             overflow: auto; scrollbar-width: none }
+  /* A BARRA DE ROLAGEM DO WINDOWS NÃO ENTRA AQUI. O WebView2 desenha a
+     barra clássica, com setinha em cima e embaixo — e ela apareceu bem do
+     lado do banner, um retângulo cinza de 1995 de verdade no meio de um
+     1995 desenhado. Sumindo com ela, a rolagem continua funcionando na
+     roda do mouse; o que sai é o cano cinza. */
+  #entrada::-webkit-scrollbar { width: 0; height: 0 }
+  /* a saída: o painel se apaga e a tela abre, enquanto a chuva corre */
+  #entrada .painel-login, #entrada { transition: opacity .55s ease, background .8s ease }
+  #entrada.saindo .painel-login { opacity: 0 }
+  #entrada.saindo { background: transparent }
+  #entrada::after { content: ""; position: absolute; inset: 0; pointer-events: none;
+    background: repeating-linear-gradient(to bottom, rgba(0,0,0,.17) 0 1px, transparent 1px 3px),
+                radial-gradient(120% 100% at 50% 50%, transparent 52%, rgba(0,0,0,.6));
+    mix-blend-mode: multiply }
+  #entrada .painel-login { position: relative; z-index: 2; width: min(560px, 92%);
+                           padding: 24px 0 }
+  /* line-height 1 e nada de folga: com caractere de bloco, qualquer sobra
+     entre as linhas vira uma costura branca no meio da letra. */
+  /* SEM overflow. Era ele que criava a rolagem: o banner tem 58 colunas
+     fixas, e se a fonte do Windows for um fio mais larga que a minha, ele
+     estoura e o navegador põe uma barra. Agora o tamanho da letra sai de
+     `clamp` em vw — o banner encolhe junto com a janela e nunca estoura.
+     line-height 1 e zero folga: com caractere de bloco, qualquer sobra
+     entre as linhas vira uma costura branca no meio da letra. */
+  #banner { margin: 0 0 10px; color: var(--acento); font-family: var(--mono);
+            font-size: clamp(8px, 1.05vw, 13px); line-height: 1;
+            white-space: pre; text-align: center; overflow: hidden }
+  #entrada .sub { text-align: center; color: var(--tinta3); font-size: 12.5px;
+                  letter-spacing: .22em; text-transform: uppercase; margin-bottom: 24px }
+  .quadro { border: 1px solid var(--borda); position: relative; padding: 20px 18px 18px;
+            margin-top: 14px }
+  .quadro > .tit { position: absolute; top: -.72em; left: 12px; padding: 0 8px;
+    background: var(--fundo); color: var(--acento); font-size: 12px;
+    letter-spacing: .14em; text-transform: uppercase }
+  .ident { display: grid; grid-template-columns: 112px 1fr; gap: 20px; align-items: center }
+  .retrato { width: 112px; height: 112px; position: relative; cursor: pointer; overflow: hidden;
+          border: 1px solid var(--acento); background: var(--painel);
+          display: grid; place-items: center }
+  /* A FOTO É A FOTO. Tinha um `grayscale(1)` na imagem e uma camada de
+     verde por cima em `mix-blend-mode: color` — junto davam o retrato
+     esverdeado de terminal antigo. Bonito de ver uma vez, estranho de
+     ver o seu próprio rosto assim todo dia. Saíram os dois: o que sobra
+     é a moldura verde em volta, que é enfeite de tela e não mexe em
+     você. */
+  .retrato img { width: 100%; height: 100%; object-fit: cover; display: block }
+  /* cantos de mira — detalhe de interface militar, muito da época */
+  .retrato::before { content: ""; position: absolute; inset: 4px; z-index: 3; pointer-events: none;
+    background:
+      linear-gradient(currentColor 0 0) 0 0/10px 1px no-repeat,
+      linear-gradient(currentColor 0 0) 0 0/1px 10px no-repeat,
+      linear-gradient(currentColor 0 0) 100% 0/10px 1px no-repeat,
+      linear-gradient(currentColor 0 0) 100% 0/1px 10px no-repeat,
+      linear-gradient(currentColor 0 0) 0 100%/10px 1px no-repeat,
+      linear-gradient(currentColor 0 0) 0 100%/1px 10px no-repeat,
+      linear-gradient(currentColor 0 0) 100% 100%/10px 1px no-repeat,
+      linear-gradient(currentColor 0 0) 100% 100%/1px 10px no-repeat;
+    color: var(--acento); opacity: .85 }
+  .retrato .solte { font-size: 11px; letter-spacing: .1em; text-transform: uppercase;
+                 color: var(--tinta3); text-align: center; padding: 0 8px; line-height: 1.5 }
+  .retrato.sobre { outline: 1px solid var(--acento) }
+  .dados .chave { color: var(--tinta3); font-size: 12px; text-transform: uppercase;
+                  letter-spacing: .12em }
+  .dados .valor { color: var(--tinta); text-transform: uppercase; letter-spacing: .16em;
+                  font-size: 17px }
+  #entrada label { display: block; font-size: 12px; letter-spacing: .16em;
+                   text-transform: uppercase; color: var(--tinta3); margin: 20px 0 7px }
+  #senha { width: 100%; background: var(--codigo); color: var(--tinta);
+           border: 1px solid var(--borda); padding: 13px 14px;
+           font: 17px/1 var(--mono); letter-spacing: .3em; outline: none }
+  #senha:focus { border-color: var(--acento) }
+  /* a árvore que o compositor devolve — em fonte de CÓDIGO, dentro da
+     conversa, com a barra de rolagem no bloco e não na página */
+  .arv { margin: 10px 0; padding: 10px 13px;
+         background: color-mix(in srgb, var(--codigo) 88%, transparent);
+         border: 1px solid var(--borda); font: 12.5px/1.75 var(--mono);
+         color: var(--tinta); white-space: pre; overflow-x: auto }
+  #nome { width: 100%; background: var(--codigo); color: var(--tinta);
+          border: 1px solid var(--acento); padding: 9px 11px; margin-top: 2px;
+          font: 15px/1 var(--mono); letter-spacing: .12em; outline: none;
+          text-transform: uppercase }
+  #nome::placeholder { text-transform: none; letter-spacing: 0; color: var(--tinta3);
+                       font-size: 13px }
+  #lembrar-linha, #plembrar-linha { display: flex; align-items: center; gap: 9px; margin-top: 16px;
+                   font-size: 12.5px; color: var(--tinta3); cursor: pointer;
+                   letter-spacing: .04em }
+  /* caixa de marcar quadrada e verde, do jeito da casa — a do sistema é
+     azul arredondada e destoa de tudo */
+  #lembrar, #plembrar { appearance: none; width: 15px; height: 15px; flex: none; margin: 0;
+             border: 1px solid var(--borda); background: var(--codigo); cursor: pointer }
+  #lembrar:checked, #plembrar:checked { border-color: var(--acento); background: var(--acento) }
+  #lembrar:checked::after, #plembrar:checked::after { content: "\2715"; display: block; color: var(--fundo);
+             font-size: 11px; line-height: 13px; text-align: center }
+  #btentrar { display: block; width: 100%; margin-top: 20px; padding: 14px;
+              border: 1px solid var(--acento); background: transparent; color: var(--acento);
+              font: 15px/1 var(--sans); letter-spacing: .3em; text-transform: uppercase;
+              cursor: pointer }
+  #btentrar:hover { background: var(--acento); color: var(--fundo) }
+  #btentrar[disabled] { opacity: .4; cursor: default }
+  #btentrar[disabled]:hover { background: transparent; color: var(--acento) }
+  #recado { margin-top: 14px; font-family: var(--mono); font-size: 12.5px; line-height: 1.8 }
+  #recado .ok, #precado .ok { color: var(--acento) }
+  #recado .av, #precado .av { color: var(--alerta) }
+  #recado .er, #precado .er { color: var(--erro) }
+  /* ══════════════════════════════════════════════════════════════════
+     O PERFIL DO USUÁRIO
+     ══════════════════════════════════════════════════════════════════ */
+  /* o "trocar" ao lado do nome, na tela de entrada: quem JÁ tem perfil
+     também precisa arrumar como quer ser chamado. Antes só dava na
+     primeira vez, e a saída era apagar dados/perfil.json na mão. */
+  .linha-nome { display: flex; align-items: baseline; gap: 10px }
+  #trocar-nome { font-size: 11px; letter-spacing: .12em; text-transform: uppercase;
+                 color: var(--tinta3); cursor: pointer;
+                 border-bottom: 1px dotted var(--borda2) }
+  #trocar-nome:hover { color: var(--acento); border-color: var(--acento) }
+
+  /* a ficha no alto da janela: foto, nome e o ponto de ligado */
+  #eu { display: flex; align-items: center; gap: 8px;
+        padding: 2px 10px 2px 7px; border-left: 1px solid var(--borda2);
+        cursor: pointer; color: var(--tinta2); font-size: 12px }
+  #eu:hover { color: var(--tinta) }
+  #eu .r { width: 19px; height: 19px; flex: none; position: relative; overflow: hidden;
+           border: 1px solid var(--borda2); background: var(--codigo) }
+  #eu.dentro .r { border-color: var(--acento) }
+  /* A FOTO VAI NO ::after, E SÓ ELA LEVA O PRETO-E-BRANCO. Com o filtro no
+     quadrado inteiro a moldura ia junto — e `grayscale(#00FF41)` é cinza
+     CLARO (o verde puro tem 71% da luminância), então a moldura verde
+     aparecia branca no alto da janela. Medido: (120,140,120) onde devia
+     ser verde. O filtro é para o retrato, não para o quadro dele. */
+  #eu .r::after { content: ""; position: absolute; inset: 0;
+                  background: var(--retrato-mini, none) center/cover no-repeat }
+  #eu .n { max-width: 140px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+           letter-spacing: .1em; text-transform: uppercase }
+  /* O PONTO VERDE DIZ UMA COISA SÓ, E ELA É VERDADE: o servidor daqui de
+     dentro respondeu há menos de 5 segundos. Não é presença em nuvem
+     nenhuma — não existe nuvem neste programa. */
+  #eu .p { width: 6px; height: 6px; flex: none; border-radius: 50%; background: var(--tinta3) }
+  #eu.dentro .p { background: var(--acento); box-shadow: 0 0 5px var(--acento) }
+
+  #perfil { position: fixed; inset: 0; z-index: 210; display: grid; place-items: center;
+            background: color-mix(in srgb, var(--fundo) 84%, transparent) }
+  #perfil .cartao { position: relative; width: min(520px, 92%); background: var(--fundo);
+                    border: 1px solid var(--borda); padding: 26px 22px 20px }
+  #perfil .cartao > .tit { position: absolute; top: -.72em; left: 12px; padding: 0 8px;
+                    background: var(--fundo); color: var(--acento); font-size: 12px;
+                    letter-spacing: .14em; text-transform: uppercase }
+  #perfil label.chave { display: block; margin-bottom: 7px }
+  #pnome { width: 100%; background: var(--codigo); color: var(--tinta);
+           border: 1px solid var(--acento); padding: 10px 12px;
+           font: 16px/1 var(--mono); letter-spacing: .12em; outline: none;
+           text-transform: uppercase }
+  #pnome::placeholder { text-transform: none; letter-spacing: 0; font-size: 12.5px;
+                        color: var(--tinta3) }
+  #perfil .onde { margin-top: 18px; padding: 9px 12px; border-left: 2px solid var(--borda2);
+                  font-size: 12px; line-height: 1.7; color: var(--tinta3) }
+  #perfil .onde code { color: var(--tinta2); font-family: var(--mono) }
+  #perfil .botoes { display: flex; gap: 10px; margin-top: 16px }
+  #perfil button { flex: 1; padding: 12px; border: 1px solid var(--acento);
+                   background: transparent; color: var(--acento);
+                   font: 14px/1 var(--sans); letter-spacing: .26em; text-transform: uppercase;
+                   cursor: pointer }
+  #perfil button:hover { background: var(--acento); color: var(--fundo) }
+  #perfil button.frio { border-color: var(--borda2); color: var(--tinta3) }
+  #perfil button.frio:hover { background: var(--borda2); color: var(--tinta) }
+  #precado { margin-top: 12px; font-family: var(--mono); font-size: 12.5px; min-height: 1.3em }
+</style></head><body>
+
+
+<canvas id="chuva"></canvas>
+<!-- ══════════════════════════════════════════════════════════════════
+     TELA DE ENTRADA — some quando a senha confere
+     ══════════════════════════════════════════════════════════════════ -->
+<div id="entrada" hidden>
+  <div class="painel-login">
+<pre id="banner">████▄ █████ █   █    ████▄ █████  ████ █   █    █████  ███
+█   █ █     █   █    █   █ █     █     █  █       █   █   █
+█   █ ████  █   █    █   █ ████   ███  ███        █   █████
+█   █ █      █ █     █   █ █         █ █  █       █   █   █
+████▀ █████   █      ████▀ █████ ████  █   █    █████ █   █</pre>
+    <div class="sub">inteligência artificial nativa</div>
+
+    <div class="quadro">
+      <div class="tit" id="tit-quadro">identificação</div>
+      <div class="ident">
+        <div id="foto" class="retrato" title="clique ou arraste a sua foto">
+          <span class="solte">arraste<br>a foto</span>
+        </div>
+        <div class="dados">
+          <div class="chave">usuário</div>
+          <div class="linha-nome">
+            <div class="valor" id="quem">—</div>
+            <span id="trocar-nome" title="mudar como você quer ser chamado">trocar</span>
+          </div>
+          <!-- Só na primeira vez. Depois vira o nome, que já está escolhido. -->
+          <input id="nome" hidden maxlength="40" autocomplete="off" spellcheck="false"
+                 placeholder="como quer ser chamado">
+          <div class="chave" style="margin-top:10px">último acesso</div>
+          <div class="valor" id="ultimo" style="letter-spacing:.08em;font-size:13.5px">—</div>
+        </div>
+      </div>
+
+      <label for="senha" id="rotulo-senha">senha</label>
+      <input id="senha" type="password" autocomplete="off" spellcheck="false">
+      <label id="lembrar-linha" for="lembrar">
+        <input type="checkbox" id="lembrar"> lembrar de mim neste computador
+      </label>
+      <button id="btentrar">entrar</button>
+      <div id="recado"></div>
+    </div>
+  </div>
+</div>
+
+<!-- ══════════════════════════════════════════════════════════════════
+     PERFIL DO USUÁRIO — o nome e a foto ficam guardados para a próxima vez.
+     É a mesma ficha da tela de entrada, só que dá para abrir DEPOIS de
+     entrar. Antes o nome só podia ser escrito na primeira vez: quem já
+     tinha perfil ficava preso ao que estava lá (nesta máquina veio
+     "SAMSUNG", o nome de fábrica) e a única saída era apagar o
+     dados/perfil.json na mão. Isso era defeito, não decisão de projeto.
+     ══════════════════════════════════════════════════════════════════ -->
+<div id="perfil" hidden>
+  <div class="cartao">
+    <div class="tit">perfil do usuário</div>
+    <div class="ident">
+      <div id="pfoto" class="retrato" title="clique ou arraste a sua foto">
+        <span class="solte">arraste<br>a foto</span>
+      </div>
+      <div class="dados">
+        <label class="chave" for="pnome">como quer ser chamado</label>
+        <input id="pnome" maxlength="40" autocomplete="off" spellcheck="false"
+               placeholder="o nome que aparece no alto da janela">
+        <div class="chave" style="margin-top:14px">último acesso</div>
+        <div class="valor" id="pultimo"
+             style="letter-spacing:.08em;font-size:13.5px">—</div>
+      </div>
+    </div>
+    <label id="plembrar-linha" for="plembrar">
+      <input type="checkbox" id="plembrar"> lembrar de mim neste computador
+    </label>
+    <div class="onde">Fica em <code>dados/perfil.json</code>, nesta máquina, e é lido
+      na próxima vez que você abrir. A senha não está nesse arquivo — o que está
+      é o <b>hash</b> dela.</div>
+    <div id="precado"></div>
+    <div class="botoes">
+      <button id="pfechar" class="frio">fechar</button>
+      <button id="pgravar">gravar</button>
+    </div>
+  </div>
+</div>
+
+<svg width="0" height="0" style="position:absolute">
+  <!-- O MONOGRAMA. Vetor de um traço só, na cor do tema, legível a 16px.
+       As trilhas saem dos DOIS lados, espelhadas no eixo do meio: cada
+       ponto (x,y) da esquerda vira (40-x, y) na direita. O cotovelo de
+       45° não é enfeite — trilha de placa nunca vira em 90°, porque canto
+       reto concentra o ataque químico na corrosão. -->
+  <symbol id="mono" viewBox="0 0 40 24">
+    <g fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="square">
+      <path d="M14 4 H19 A8 8 0 0 1 19 20 H14 Z"/>
+      <path d="M2 6 H6 L10 10 H14"/><path d="M2 12 H14"/><path d="M2 18 H6 L10 14 H14"/>
+      <path d="M26.8 10 H30 L34 6 H38"/><path d="M27 12 H38"/><path d="M26.8 14 H30 L34 18 H38"/>
+    </g>
+    <g fill="currentColor">
+      <circle cx="2" cy="6" r="1.4"/><circle cx="2" cy="12" r="1.4"/><circle cx="2" cy="18" r="1.4"/>
+      <circle cx="38" cy="6" r="1.4"/><circle cx="38" cy="12" r="1.4"/><circle cx="38" cy="18" r="1.4"/>
+    </g>
+  </symbol>
+</svg>
+
+<div id="janela">
+<div id="menu">
+  <span id="marca"><svg><use href="#mono"/></svg></span>
+  <span class="m" data-menu="arquivo">Arquivo</span>
+  <span class="m" data-menu="editar">Editar</span>
+  <span class="m" data-menu="visualizar">Visualizar</span>
+  <span class="m" data-menu="ir">Ir</span>
+  <span class="m" data-menu="terminal">Terminal</span>
+  <span class="m" data-menu="ajuda">Ajuda</span>
+  <span id="titulo">DevDesk AI</span><span id="sinal" title=""></span>
+  <!-- QUEM ESTÁ USANDO. Clique abre o perfil. O ponto verde quer dizer
+       que o servidor local respondeu agora — e só isso. -->
+  <span id="eu" title="perfil do usuário — Ctrl+,"><span class="r"></span><span
+        class="n">—</span><span class="p" title="o servidor local está respondendo"></span></span>
+</div>
+
+<div id="corpo">
+<aside id="esquerda">
+  <button id="novo">+ &nbsp;Novo chat</button>
+  <div class="grupo">Conversas</div>
+  <div id="conversas" class="lista"></div>
+  <div class="grupo">Tarefas</div>
+  <div id="tarefas" class="lista"></div>
+</aside>
+<div class="puxador" data-lado="esquerda"></div>
+
+<main>
+  <div id="fluxo"><div class="centro" id="coluna"></div></div>
+  <form id="f"><div id="escolhas" hidden></div><div id="barra" hidden></div>
+    <div id="puxa" title="arraste para cima ou para baixo para mudar a altura da caixa"></div>
+    <div class="centro">
+    <textarea id="e" rows="1" autocomplete="off" autofocus spellcheck="false"
+              placeholder="Descreva o problema com suas palavras — ou digite / para os comandos"></textarea>
+    <button class="env">Enviar</button>
+  </div></form>
+  <div class="status">
+    <span class="ponto" id="ponto">●</span>
+    <span id="estado-diz"></span>
+    <span class="pasta" id="pasta"></span>
+    <span id="cerebro-info"></span>
+    <span style="margin-left:auto">local · sem nuvem</span>
+  </div>
+</main>
+
+<div class="puxador" data-lado="direita"></div>
+<section id="direita">
+  <div id="painelabas">
+    <span class="pa" data-aba="arquivo">Arquivo<i class="x" title="fechar esta aba">✕</i></span>
+    <span class="pa" data-aba="terminal">Terminal<i class="x" title="fechar esta aba">✕</i></span>
+    <span class="pa" data-aba="projeto">Projeto<i class="x" title="fechar esta aba">✕</i></span>
+  </div>
+  <div id="paneis">
+    <div id="p-arquivo">
+      <div id="abas"></div>
+      <div id="cabeca" hidden></div>
+      <!-- O #editor e do Monaco e de mais NINGUEM. Escrever innerHTML ali
+           arranca a arvore de DOM que ele montou; qualquer recado vai no
+           #editorvazio, que fica por cima e some quando ha arquivo. -->
+      <div id="editor"></div>
+      <div id="editorvazio" hidden></div>
+    </div>
+    <div id="p-terminal"></div>
+    <div id="p-projeto"></div>
+  </div>
+</section>
+</div>
+</div>
+
+<script>
+const fluxo = document.getElementById("fluxo");
+const coluna = document.getElementById("coluna");
+const ESCOLHAS = document.getElementById("escolhas");
+let visto = 0;
+let revelando = false;
+
+// Revela o texto de um elemento caractere a caractere, preservando o HTML
+// que já estava lá (negrito, código, a árvore do projeto). Ele mede o
+// texto, esconde tudo e vai soltando — em vez de reescrever o HTML a cada
+// letra, que quebraria as tags no meio.
+function datilografar(el){
+  const passo = Math.max(1, Math.round(el.textContent.length / 90));
+  const nos = [];
+  const anda = n => {
+    if (n.nodeType === 3) nos.push(n);
+    else n.childNodes.forEach(anda);
+  };
+  anda(el);
+  const textos = nos.map(n => n.nodeValue);
+  nos.forEach(n => n.nodeValue = "");
+  let i = 0, j = 0;
+  const tique = setInterval(() => {
+    let dei = 0;
+    while (dei < passo && i < nos.length){
+      const inteiro = textos[i];
+      if (j >= inteiro.length){ i++; j = 0; continue; }
+      const quanto = Math.min(passo - dei, inteiro.length - j);
+      nos[i].nodeValue = inteiro.slice(0, j + quanto);
+      j += quanto; dei += quanto;
+    }
+    // ROLAGEM: so desce sozinho se a conversa ja estava embaixo. Puxar
+    // para reler uma fala antiga e ser arrastado ao fim a cada letra e a
+    // mesma regra do #p-terminal: quem subiu nao foi convocado para o fim.
+    if (fluxo.scrollHeight - fluxo.scrollTop - fluxo.clientHeight < 40)
+      fluxo.scrollTop = fluxo.scrollHeight;
+    if (i >= nos.length){ clearInterval(tique); }
+  }, LETRA_MS);
+}
+
+const esc = s => (s??"").replace(/[&<>]/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;"}[c]));
+// A CERCA DE TRÊS CRASES VEM PRIMEIRO, e a ordem importa. O compositor
+// devolve a árvore do projeto dentro de ```…``` , e antes daqui essas
+// crases apareciam na tela como crase mesmo — a árvore saía torta, com um
+// ` solto em cima e outro embaixo.
+//
+// Tem que casar ANTES do `código` de uma linha, senão a regra de uma
+// crase come as três e sobra lixo. E o conteúdo do bloco NÃO passa pelo
+// negrito: dentro de código, `**` é `**`, não é ênfase.
+const cerca = /```[a-z]*\n([\s\S]*?)```/g;
+function negrito(s){
+  const blocos = [];
+  // guarda os blocos com uma marca que não existe em texto de gente
+  const semBloco = (s ?? "").replace(cerca, (_, corpo) =>
+    "\u0000BLOCO" + (blocos.push(corpo) - 1) + "\u0000");
+  let saida = esc(semBloco)
+    .replace(/\*\*(.+?)\*\*/g, "<b>$1</b>")
+    .replace(/`(.+?)`/g, '<code style="font-family:var(--mono);color:var(--tinta-cod)">$1</code>');
+  return saida.replace(/\u0000BLOCO(\d+)\u0000/g, (_, i) =>
+    '<pre class="arv">' + esc(blocos[+i].replace(/\n$/, "")) + '</pre>');
+}
+
+function desenhar(c){
+  const d = document.createElement("div");
+  d.className = "cartao";
+  if (c.resolvido) d.classList.add("resolvido");
+
+  if (c.tipo === "voce")
+    d.innerHTML = `<div class="voce">${esc(c.texto)}</div>`;
+
+  else if (c.tipo === "ela")
+    d.innerHTML = `<div class="ela">${negrito(c.texto)}</div>`;
+
+  // O CARTAO QUE ABRE E FECHA
+  //
+  // Anatomia do `GenericEventMessage` do Agent Canvas (MIT): titulo sempre
+  // visivel, detalhe ESCONDIDO por padrao, sinal de sucesso na direita. E
+  // como dez comandos cabem numa conversa sem virar parede de texto — antes
+  // um `dir` de 200 linhas empurrava a pergunta seguinte para fora da tela.
+  //
+  // <details> nativo, e nao JavaScript: abre e fecha sozinho, funciona com
+  // teclado, e o navegador nao desenha o que esta fechado.
+  //
+  // O QUE MUDEI DELES: la o padrao e sempre fechado. Aqui o cartao NASCE
+  // ABERTO QUANDO O COMANDO FALHOU. Sucesso ninguem le; erro e justamente
+  // o que a pessoa precisa ver sem ter de clicar.
+  else if (c.tipo === "comando"){
+    const mau = c.codigo !== 0;
+    const linhas = (c.saida || "").split("\n").length;
+    // Sem rotulo "Comando" em cima: o cartao ja mostra o comando, e duas
+    // setas empilhadas dizendo a mesma coisa e ruido. O "confirmado por
+    // voce" virou selo dentro do titulo, onde ele pertence.
+    d.innerHTML =
+      `<details class="dobra"${mau ? " open" : ""}>
+         <summary>
+           <span class="seta">▶</span>
+           ${c.confirmado ? `<span class="selo">confirmado</span>` : ""}
+           <span class="oque">${esc(c.comando)}</span>
+           <span class="quanto">${c.saida ? linhas + (linhas > 1 ? " linhas" : " linha") : "sem saída"} · ${c.segundos}s</span>
+           <span class="sinal ${mau ? "mau" : "bom"}">${mau ? "✕ código " + c.codigo : "✓"}</span>
+         </summary>
+         <pre>${esc(c.saida) || "(sem saída)"}</pre>
+       </details>`;
+  }
+
+  else if (c.tipo === "cerebro"){
+    // ACIMA DO LIMIAR O CARTÃO NEM APARECE. Acertou → a resposta vai na
+    // ponta da língua, sem precisar ver a rede por dentro. O erro abaixo
+    // do limiar é que mostra as barras e a faixa "errei?" para corrigir.
+    if (c.confiavel) return;
+    if (!c.candidatos.length){
+      d.innerHTML = `<div class="cerebro"><div class="rotulo"><span class="ic">◆</span>Cérebro</div>
+        <div class="nota">Nenhuma peça conhecida nessa frase.</div></div>`;
+    } else {
+      const barras = c.candidatos.map((x,i) =>
+        `<div class="barra${i?"":" top"}"><span class="n">${esc(x.nome)}</span>
+         <span class="t"><i style="width:${(x.probabilidade*100).toFixed(1)}%"></i></span>
+         <span class="v">${(x.probabilidade*100).toFixed(1)}%</span></div>`).join("");
+      // Os botões de correção saíram daqui — agora moram na faixa em cima
+      // da caixa de escrever (#escolhas). O cartão guarda só o selo do que
+      // já foi ensinado, para não dizer "errei?" depois de corrigido.
+      const escolhas = c.ensinado
+        ? `<div class="escolhas"><span class="escolha feita">✓ ${esc(c.ensinado)}</span></div>`
+        : "";
+      d.innerHTML = `<div class="cerebro">
+        <div class="rotulo"><span class="ic">◆</span>Cérebro — o que a rede calculou</div>
+        ${barras}
+        <div class="nota">${c.conhecidas} de ${c.total} peças conhecidas ·
+        ${c.confiavel ? "acima" : "<b style='color:var(--alerta)'>abaixo</b>"} do limiar de
+        ${(c.limiar*100).toFixed(0)}%</div>${escolhas}</div>`;
+    }
+  }
+
+  else if (c.tipo === "abriu")
+    d.innerHTML = `<div class="rotulo"><span class="ic">▤</span>Abriu
+      <b style="color:var(--acento);font-weight:500">${esc(c.nome)}</b>
+      <span style="color:var(--tinta3)">· ${c.linhas} linhas · ${(c.bytes/1024).toFixed(1)} KB</span></div>`;
+
+  else if (c.tipo === "aprendeu"){
+    const ok = c.resultado === "aceito";
+    const ja = c.resultado === "ja_sabia";
+    d.innerHTML = `<div class="aprendeu${ok?"":" nao"}">
+      ${ok ? `Aprendi: <b style="color:var(--ok)">${esc(c.intencao)}</b>`
+           : ja ? `Isso mesmo: <b>${esc(c.intencao)}</b> — era o que eu ia dizer.`
+                : `Não consegui aprender sem arriscar o resto. <b>Modelo intacto.</b>`}
+      <div class="det">${ok
+        ? `taxa ${c.taxa} · confiança ${(c.confianca_antes*100).toFixed(1)}% → ${(c.confianca*100).toFixed(1)}% · guarda ${(c.acerto_guarda*100).toFixed(2)}%`
+        : c.porque ? esc(c.porque)
+          : ja ? `confiança ${(c.confianca*100).toFixed(1)}% — meu palpite, só não estava alto o bastante para eu agir`
+                : `guarda ${(c.acerto_guarda*100).toFixed(2)}%`}
+      · correção gravada</div></div>`;
+  }
+
+  else if (c.tipo === "gravou")
+    d.innerHTML = `<div class="gravou${c.desfeito ? " resolvido" : ""}">
+      <span class="ic">▤</span> Gravei
+      <b>${esc(c.nome)}</b>
+      <span class="det">${c.mexidas} linha${c.mexidas===1?"":"s"} mexida${c.mexidas===1?"":"s"}
+        · ${c.linhas} linhas · ${c.bytes < 1024 ? c.bytes + " B" : (c.bytes/1024).toFixed(1) + " KB"}</span>
+      ${c.desfeito
+        ? `<span class="det">desfeito</span>`
+        : `<button onclick="desfazerArquivo('${c.caminho.replace(/\\/g,"\\\\").replace(/'/g,"\\'")}')"
+             title="Volta o arquivo ao que era antes deste salvamento">desfazer</button>`}
+    </div>`;
+
+  else if (c.tipo === "projeto")
+    // DOIS USOS PARA O MESMO CARTÃO: mudar de pasta TEM (dispara na hora),
+    // e PROPOR um projeto novo ESPERA (a proposta de criação é uma ação de
+    // risco como qualquer outra — por isso tem botões de confirmar/recusar,
+    // igual ao cartão pendente de comando).
+    if (c.plano)
+      d.innerHTML =
+        `<div class="pendente"><div class="porque">⚠ ${esc(c.risco||"")} — precisa da sua confirmação</div>
+          <div style="margin:2px 0 6px">Propor criar <b>${esc(c.nome)}</b>
+          (${esc(c.linguagem)} · ${esc(c.tipo_projeto||"")} · ${c.arquivos||0} arquivos)</div>
+          <pre class="arvore">${esc(c.arvore||"")}</pre>
+          ${c.perguntas&&c.perguntas.length
+            ? `<div class="det">antes de escrever, o que eu não tenho certeza:<br>${c.perguntas.map(q=>"· "+esc(q)).join("<br>")}</div>`
+            : ""}
+          <span style="color:var(--tinta3);font-size:12px">diga só <b>sim</b> para criar</span><br>
+          ${c.resolvido ? `<span style="color:var(--tinta3);font-size:12px">${c.resolvido}</span>`
+            : `<button class="sim" onclick="responder(${c.id},1)">Confirmar</button>
+               <button onclick="responder(${c.id},0)">Não fazer</button>`}
+        </div>`;
+    else
+      d.innerHTML = `<div class="rotulo"><span class="ic">📁</span>${
+        c.jaestava ? "Já estava em" : "Projeto agora é"}
+        <b style="color:var(--acento);font-weight:500">${esc(c.nome)}</b>
+        <span style="color:var(--tinta3)">— comandos, busca e árvore passam a ser daqui</span></div>`;
+
+  else if (c.tipo === "vscode")
+    d.innerHTML = `<div class="rotulo"><span class="ic">⧉</span>Abri no VS Code
+      <b style="color:var(--acento);font-weight:500">${esc(c.nome)}</b>
+      <span style="color:var(--tinta3)">${c.pasta?"(pasta)":""}</span></div>`;
+
+  else if (c.tipo === "achados")
+    d.innerHTML = `<div class="rotulo"><span class="ic">⌕</span>${c.itens.length}
+      resultado(s) para <b style="color:var(--acento);font-weight:500">${esc(c.termo)}</b></div>
+      <div class="bloco" style="padding:5px">` + c.itens.map(i =>
+        `<div class="achado">${i.pasta?"📁":"📄"} ${esc(i.nome)}
+          <span class="onde">${esc(i.onde)}</span>
+          <button onclick="noVsCode('${i.caminho.replace(/\\/g,"\\\\").replace(/'/g,"\\'")}')">VS Code</button>
+          ${i.pasta?"":`<button onclick="abrirAqui('${i.caminho.replace(/\\/g,"\\\\").replace(/'/g,"\\'")}')">aqui</button>`}
+        </div>`).join("") + `</div>`;
+
+  else if (c.tipo === "pendente")
+    d.innerHTML = `<div class="pendente">
+      <div class="porque">⚠ Precisa da sua confirmação — ${esc(c.porque)}</div>
+      <code>${esc(c.comando)}</code>
+      ${c.resolvido ? `<span style="color:var(--tinta3);font-size:12px">${c.resolvido}</span>`
+        : `<button class="sim" onclick="responder(${c.id},1)">Confirmar</button>
+           <button onclick="responder(${c.id},0)">Não fazer</button>`}</div>`;
+
+  coluna.appendChild(d);
+}
+
+let abas = [], viva = null;
+
+// ══════════════════════════════════════════════════════════════════
+//  A TELA OBEDECE AO PYTHON
+//
+//  Quem executou a acao diz para onde a tela deve olhar; o front so
+//  cumpre a ordem. Isso tira do JavaScript a adivinhacao de "sera que
+//  agora eu troco de painel?" — quem abriu o arquivo sabe que abriu.
+//
+//  O CARIMBO DE HORA NAO E ENFEITE. Sem comparar `em`, a atualizacao
+//  que roda a cada 1,2s reenviaria a mesma ordem para sempre e
+//  arrastaria a tela de volta toda vez: a pessoa clicaria numa aba e
+//  perderia o clique um segundo depois. So ordem NOVA e obedecida.
+// ══════════════════════════════════════════════════════════════════
+let telaEm = 0;
+let abaViva = "arquivo";     // arquivo | terminal | projeto
+
+// ══════════════════════════════════════════════════════════════════
+//  AS ABAS QUE VOCÊ FECHOU
+//
+//  Fechar aqui é ESCONDER, não apagar: o painel continua existindo com
+//  o conteúdo dele, e volta inteiro pelo menu Visualizar → Aba X. Não
+//  há nada a perder ao fechar, e é por isso que o X pode ser um clique
+//  só, sem perguntar "tem certeza?".
+//
+//  Fechar TODAS recolhe o painel da direita e devolve a largura à
+//  conversa — que é o que "quero só o chat" quer dizer.
+// ══════════════════════════════════════════════════════════════════
+const TODAS_AS_ABAS = ["arquivo", "terminal", "projeto"];
+let abasFechadas = new Set();
+try {
+  abasFechadas = new Set(JSON.parse(localStorage.getItem("devdesk-abas") || "[]"));
+} catch (e) {}
+
+function guardarAbasFechadas(){
+  try { localStorage.setItem("devdesk-abas", JSON.stringify([...abasFechadas])); }
+  catch (e) {}
+}
+function abasAbertas(){
+  return TODAS_AS_ABAS.filter(a => !abasFechadas.has(a));
+}
+function fecharAba(qual){
+  abasFechadas.add(qual);
+  guardarAbasFechadas();
+  pintarPainel();
+}
+function fecharTodasAsAbas(){
+  TODAS_AS_ABAS.forEach(a => abasFechadas.add(a));
+  guardarAbasFechadas();
+  pintarPainel();
+}
+function abrirTodasAsAbas(){
+  abasFechadas.clear();
+  guardarAbasFechadas();
+  DIR.classList.add("aberto");
+  pintarPainel();
+}
+let cartoes = [];            // o ultimo estado, para a aba Terminal ler
+
+function irPara(tela){
+  if (!tela || !tela.em || tela.em <= telaEm) return false;
+  telaEm = tela.em;
+  DIR.classList.add("aberto");
+  // MANDAR ABRIR UM ARQUIVO REABRE A ABA. Se você fechou a aba Arquivo e
+  // depois pediu para abrir um arquivo, o pedido vale mais que a
+  // arrumação de ontem — esconder o que você acabou de pedir seria o
+  // programa discutindo com você.
+  abasFechadas.delete(tela.aba);
+  guardarAbasFechadas();
+  abaViva = tela.aba;
+  if (tela.aba === "arquivo" && tela.caminho
+      && abas.some(a => a.caminho === tela.caminho)){
+    viva = tela.caminho;
+  }
+  return true;      // quem pinta e o atualizar, UMA vez
+}
+
+// ══════════════════════════════════════════════════════════════════
+//  AS TRES ABAS DA DIREITA
+//
+//  Vieram das seis do Agent Canvas (files · terminal · browser ·
+//  vscode · planner · tasklist), passadas pelo filtro do que ESTE
+//  projeto realmente tem hoje:
+//
+//    files    -> Arquivo, e a arvore virou a aba Projeto
+//    terminal -> Terminal
+//    browser  -> nao temos navegador
+//    vscode   -> nos abrimos o VS Code de verdade, nao um dentro daqui
+//    planner  -> nao existe plano de passos ainda
+//    tasklist -> ja esta na barra da esquerda; duplicar so confunde
+//
+//  Copiar as seis para ter seis seria decorar a tela com abas vazias.
+// ══════════════════════════════════════════════════════════════════
+function pintarPainel(){
+  // a aba viva tem de ser uma que existe: fechar a que estava aberta
+  // deixaria a barra sem nenhuma acesa e os três painéis escondidos
+  const abertas = abasAbertas();
+  if (abertas.length && !abertas.includes(abaViva)) abaViva = abertas[0];
+  document.getElementById("painelabas").hidden = abertas.length === 0;
+  if (!abertas.length) DIR.classList.remove("aberto");
+
+  document.querySelectorAll("#painelabas .pa").forEach(e => {
+    e.hidden = abasFechadas.has(e.dataset.aba);
+    e.classList.toggle("viva", e.dataset.aba === abaViva);
+    const n = e.dataset.aba === "arquivo" ? abas.length
+            : e.dataset.aba === "terminal" ? cartoes.filter(c => c.tipo === "comando").length
+            : 0;
+    const marca = e.querySelector(".conta");
+    if (n){ if (marca) marca.textContent = n;
+            // ANTES do X, e não no fim: `beforeend` punha o número depois
+            // do botão de fechar, e "Arquivo ✕ 3" não quer dizer nada.
+            else e.querySelector(".x").insertAdjacentHTML(
+                   "beforebegin", `<span class="conta">${n}</span>`); }
+    else if (marca) marca.remove();
+  });
+  document.getElementById("p-arquivo").hidden  = !abertas.length || abaViva !== "arquivo";
+  document.getElementById("p-terminal").hidden = !abertas.length || abaViva !== "terminal";
+  document.getElementById("p-projeto").hidden  = !abertas.length || abaViva !== "projeto";
+  if (!abertas.length) return;
+
+  if (abaViva === "arquivo") pintarAbas();
+  else if (abaViva === "terminal") pintarTerminal();
+  else if (abaViva === "projeto") pintarProjeto();
+}
+
+function verAba(qual){
+  // pedir a aba pelo menu REABRE: é o caminho de volta de quem fechou
+  abasFechadas.delete(qual);
+  guardarAbasFechadas();
+  abaViva = qual;
+  DIR.classList.add("aberto");
+  // Pedir a aba Projeto de novo joga fora a arvore guardada: quem clica em
+  // "Projeto" depois de mexer nos arquivos quer a lista de AGORA.
+  //
+  // (Aqui antes eu chamava `pintarProjeto` direto e pulava o `pintarPainel`
+  // — mas e o `pintarPainel` quem mostra e esconde os paineis. A arvore era
+  // buscada e desenhada dentro de um painel que continuava escondido. Uma
+  // porta so para pintar, sempre.)
+  if (qual === "projeto") esquecerArvore();
+  pintarPainel();
+}
+document.querySelectorAll("#painelabas .pa").forEach(e => {
+  e.onclick = ev => {
+    if (ev.target.closest(".x")){ ev.stopPropagation(); fecharAba(e.dataset.aba); return; }
+    verAba(e.dataset.aba);
+  };
+});
+
+// ══════════════════════════════════════════════════════════════════
+//  O ESTADO NA BARRA DE BAIXO
+//  O nome tecnico fica no `title`; na tela vai a frase em portugues.
+//  "aguardando_confirmacao" na barra seria o sistema falando consigo.
+// ══════════════════════════════════════════════════════════════════
+// O SINAL VAI TAMBEM PARA O TITULO DA JANELA.
+// Ideia do `agent-state-emoji.ts` do Agent Canvas (MIT), que poe o estado
+// no titulo da ABA do navegador: da para saber se o agente terminou sem
+// trocar de janela. Custa dez linhas e devolve a pessoa para o trabalho
+// dela em vez de deixa-la vigiando a tela.
+const SINAL = {ok:"✅", indo:"🟢", freio:"⚠️", duvida:"❓", erro:"🔴"};
+// A HORA DA ÚLTIMA RESPOSTA DO SERVIDOR. É o que acende o ponto verde da
+// ficha do usuário — e é a única coisa que aquele ponto afirma.
+let respondeuEm = 0;
+let sinalAntes = null;
+
+function pintarEstado(r){
+  respondeuEm = Date.now();               // veio resposta: o ponto acende
+  if (!r.estado) return;
+  // A CHUVA SEGUE O ESTADO. Este é o único lugar do arquivo que sabe qual
+  // é o estado de agora, então é aqui que a chuva fica sabendo também.
+  if (typeof chuvaNoEstado === "function") chuvaNoEstado(r.estado);
+  const ponto = document.getElementById("ponto");
+  const diz = document.getElementById("estado-diz");
+  ponto.className = "ponto " + r.estado_como;
+  ponto.title = r.estado;
+  diz.className = r.estado_como;
+  diz.textContent = r.estado === "parado" ? "" : r.estado_diz;
+
+  if (r.estado === sinalAntes) return;      // nao reescreve o titulo a cada 1,2s
+  sinalAntes = r.estado;
+  const emoji = SINAL[r.estado_como] || "";
+  const sinal = document.getElementById("sinal");
+  sinal.textContent = emoji;
+  sinal.title = r.estado_diz;
+  document.title = emoji + " DevDesk AI";
+}
+
+function pintarTerminal(){
+  const cmds = cartoes.filter(c => c.tipo === "comando");
+  const alvo = document.getElementById("p-terminal");
+  if (!cmds.length){
+    alvo.innerHTML = `<div class="vaziopainel">Nenhum comando ainda.<br>
+      Mande <code>&gt; git status</code> na conversa.</div>`;
+    return;
+  }
+  // ROLAGEM: so desce sozinho se ja estava embaixo. Puxar a barra para
+  // ler uma saida antiga e ver o painel te jogar para o fim e a forma
+  // mais rapida de tornar um painel inutil.
+  const embaixo = alvo.scrollHeight - alvo.scrollTop - alvo.clientHeight < 40;
+  alvo.innerHTML = cmds.map(c =>
+    `<div class="linha">
+       <div class="c"><span class="seta">&gt;</span>${esc(c.comando)}</div>
+       <pre>${esc(c.saida) || "(sem saída)"}</pre>
+       <div class="fim${c.codigo ? " mau" : ""}">código ${c.codigo} · ${c.segundos}s${
+         c.confirmado ? " · confirmado por você" : ""}</div>
+     </div>`).join("");
+  if (embaixo) alvo.scrollTop = alvo.scrollHeight;
+}
+
+// ══════════════════════════════════════════════════════════════════
+//  A ARVORE QUE ABRE E FECHA
+//
+//  UM NIVEL POR VEZ, pedido quando voce abre a pasta. A versao anterior
+//  descia seis niveis de uma vez e parava em 300 itens: lia pasta que
+//  ninguem ia olhar e cortava no meio, escondendo arquivo sem avisar.
+//  Medido na pasta de projetos: 2,87s para montar uma arvore que aparecia
+//  fechada de qualquer jeito.
+//
+//  Clique em arquivo abre no editor. Clique em pasta abre a pasta. Para
+//  a pasta virar o PROJETO — onde os comandos rodam e a busca parte —
+//  tem o botao "usar", que aparece ao passar o mouse.
+// ══════════════════════════════════════════════════════════════════
+let arvoreFilhos = new Map();    // "" = a raiz do projeto -> itens
+let arvoreAberta = new Set();    // caminhos relativos expandidos
+
+function esquecerArvore(){ arvoreFilhos.clear(); arvoreAberta.clear(); }
+
+async function filhosDe(sub){
+  if (arvoreFilhos.has(sub)) return arvoreFilhos.get(sub);
+  try {
+    const r = await (await fetch("/api/arvore?sub=" + encodeURIComponent(sub))).json();
+    arvoreFilhos.set(sub, r.itens || []);
+  } catch { arvoreFilhos.set(sub, []); }
+  return arvoreFilhos.get(sub);
+}
+
+function tamanho(n){
+  return n ? (n < 1024 ? n + " B" : (n/1024).toFixed(1) + " KB") : "";
+}
+
+function ramos(sub, nivel){
+  let html = "";
+  for (const i of (arvoreFilhos.get(sub) || [])){
+    const aberta = arvoreAberta.has(i.caminho);
+    const rec = 12 + nivel * 13;
+    html += `<div class="no" data-cam="${esc(i.caminho)}" data-pasta="${i.pasta ? 1 : 0}"
+                  style="padding-left:${rec}px" title="${esc(i.caminho)}">
+        <span class="tri">${i.pasta ? (aberta ? "▾" : "▸") : "·"}</span>
+        <span class="nm${i.pasta ? " p" : ""}">${esc(i.nome)}</span>
+        ${i.pasta ? `<span class="usar" data-usar="1"
+                       title="Usar esta pasta como o projeto atual">usar</span>`
+                  : `<span class="b">${tamanho(i.bytes)}</span>`}</div>`;
+    if (i.pasta && aberta) html += ramos(i.caminho, nivel + 1);
+  }
+  return html;
+}
+
+/** As ultimas `n` partes do caminho. Cortar por SEGMENTO e nao por letra:
+ *  `…\LOJA AUTÔNOMA PRO\AdminApp` diz onde voce esta; `…MA PRO\AdminApp`
+ *  nao diz. */
+function fimDoCaminho(caminho, n = 2){
+  const partes = (caminho || "").replace(/[\\/]+$/, "").split(/[\\/]/).filter(Boolean);
+  if (partes.length <= n) return caminho;
+  return "…" + (caminho.includes("\\") ? "\\" : "/") + partes.slice(-n).join(
+    caminho.includes("\\") ? "\\" : "/");
+}
+
+function soONome(caminho){
+  const partes = (caminho || "").replace(/[\\/]+$/, "").split(/[\\/]/);
+  return partes[partes.length - 1] || caminho;
+}
+
+async function pintarProjeto(){
+  const alvo = document.getElementById("p-projeto");
+  if (!arvoreFilhos.has("")){
+    alvo.innerHTML = `<div class="vaziopainel">lendo a pasta…</div>`;
+    await filhosDe("");
+  }
+  const cabeca = `<div class="raiz" title="${esc(pastaAtual)}">📁 <b>${esc(soONome(pastaAtual))}</b>` +
+                 `<span class="fecha" title="fechar o projeto e voltar para a pasta de casa">✕</span></div>`;
+  const corpo = ramos("", 0);
+  alvo.innerHTML = cabeca + (corpo ||
+    `<div class="vaziopainel">Essa pasta está vazia.</div>`);
+}
+
+// Um ouvinte só, no painel — e não um por linha. A árvore se redesenha
+// inteira a cada clique; pendurar `onclick` em cada nó seria recriar
+// centenas de fechamentos a cada abrir de pasta.
+document.getElementById("p-projeto").onclick = async ev => {
+  if (ev.target.closest(".fecha")){ fecharProjeto(); return; }
+  const no = ev.target.closest(".no");
+  if (!no) return;
+  const cam = no.dataset.cam;
+  if (ev.target.dataset.usar){          // "usar": vira o projeto atual
+    ev.stopPropagation();
+    return mandar("abrir " + cam);
+  }
+  if (no.dataset.pasta === "1"){
+    if (arvoreAberta.has(cam)) arvoreAberta.delete(cam);
+    else { arvoreAberta.add(cam); await filhosDe(cam); }
+    pintarProjeto();
+  } else {
+    abrirAqui(cam);
+  }
+};
+
+// ══════════════════════════════════════════════════════════════════
+//  O EDITOR: MONACO, DA PASTA DO PROJETO
+//
+//  Monaco e o editor de dentro do VS Code, publicado solto pela
+//  Microsoft (MIT). Nao e "parecido com": e o mesmo componente.
+//
+//  Ele vem de `/vendor/monaco/`, que sao 4,9 MB guardados no repositorio
+//  — nao de uma CDN. Buscar script de servidor de terceiro para a tela
+//  abrir quebraria o unico compromisso que este projeto tem desde o
+//  primeiro dia: roda inteiro nesta maquina.
+//
+//  UM MODELO POR ARQUIVO, e nao um editor por arquivo. O modelo guarda o
+//  texto, o desfazer e a posicao do cursor; trocar de aba troca o modelo
+//  e voce volta exatamente onde estava. Um editor por aba gastaria
+//  memoria e perderia isso.
+// ══════════════════════════════════════════════════════════════════
+let monacoPronto = null, editor = null, monacoFalhou = false;
+const modelos = new Map();      // caminho -> modelo do Monaco
+const sujos = new Set();        // caminhos com mudanca nao gravada
+
+function carregarMonaco(){
+  if (monacoPronto) return monacoPronto;
+  monacoPronto = new Promise((ok, ruim) => {
+    // O worker precisa ser criado da NOSSA origem. O jeito padrao offline
+    // e um blob que so faz importScripts do workerMain de verdade.
+    window.MonacoEnvironment = {
+      getWorkerUrl: () => URL.createObjectURL(new Blob([
+        `self.MonacoEnvironment={baseUrl:"${location.origin}/vendor/monaco/"};\n` +
+        `importScripts("${location.origin}/vendor/monaco/vs/base/worker/workerMain.js");`
+      ], {type:"text/javascript"}))
+    };
+    const s = document.createElement("script");
+    s.src = "/vendor/monaco/vs/loader.js";
+    s.onerror = () => ruim(new Error("não achei o loader.js do Monaco"));
+    s.onload = () => {
+      require.config({paths:{vs:"/vendor/monaco/vs"}});
+      require(["vs/editor/editor.main"], () => { temaDevDesk(); ok(window.monaco); }, ruim);
+    };
+    document.head.appendChild(s);
+  });
+  return monacoPronto;
+}
+
+function temaDevDesk(){
+  // As mesmas cores do resto da tela. Um editor com fundo de outro tom
+  // parece uma janela colada por cima, e nao uma parte do aplicativo.
+  //
+  // AS CORES SAEM DO CSS, e nao estao escritas aqui. Antes estavam, e o
+  // resultado era que trocar o tema deixava um retangulo azul no meio do
+  // verde — o editor nao sabia que o resto tinha mudado. Agora ele
+  // pergunta ao proprio documento qual e a cor de agora.
+  //
+  // A FONTE do editor NAO entra nisto. O tema mexe em cor; a fonte do
+  // codigo e do Monaco e continua sendo a que voce configurou.
+  const v = n => getComputedStyle(document.documentElement)
+                   .getPropertyValue(n).trim();
+  monaco.editor.defineTheme("devdesk", {
+    base:"vs-dark", inherit:true, rules:[],
+    colors:{
+      "editor.background": v("--codigo"),
+      "editor.foreground": v("--tinta"),
+      "editorLineNumber.foreground": v("--borda"),
+      "editorLineNumber.activeForeground": v("--tinta3"),
+      "editor.lineHighlightBackground": v("--painel"),
+      "editorCursor.foreground": v("--acento"),
+      "editor.selectionBackground": v("--borda"),
+      "editorIndentGuide.background1": v("--borda2"),
+      "editorGutter.background": v("--codigo"),
+      "editorWidget.background": v("--painel"),
+      "editorWidget.border": v("--borda"),
+      "input.background": v("--codigo"),
+      "scrollbarSlider.background": v("--borda"),
+    }
+  });
+  if (window.monaco && monaco.editor.setTheme) monaco.editor.setTheme("devdesk");
+}
+
+/** A extensao decide a linguagem — perguntando ao proprio Monaco.
+ *  Ele ja tem as 81 registradas com as extensoes de cada uma; escrever
+ *  a mao um mapa de .py -> python seria manter de graca uma tabela que
+ *  a biblioteca ja mantem melhor. */
+function linguagemDe(nome){
+  const i = nome.lastIndexOf(".");
+  if (i < 0) return "plaintext";
+  const ext = nome.slice(i).toLowerCase();
+  const l = monaco.languages.getLanguages()
+              .find(x => (x.extensions || []).some(e => e.toLowerCase() === ext));
+  return l ? l.id : "plaintext";
+}
+
+function modeloDe(a){
+  let m = modelos.get(a.caminho);
+  if (!m || m.isDisposed()){
+    m = monaco.editor.createModel(a.conteudo, linguagemDe(a.nome));
+    m.onDidChangeContent(() => {
+      if (!sujos.has(a.caminho)){ sujos.add(a.caminho); pintarAbas(); }
+      pintarCabeca();
+    });
+    modelos.set(a.caminho, m);
+  }
+  return m;
+}
+
+/** Mostra um recado por cima do editor — ou, com `null`, devolve a vez a ele. */
+function recado(html){
+  const cx = document.getElementById("editorvazio");
+  const ed = document.getElementById("editor");
+  if (html === null){ cx.hidden = true; ed.hidden = false; return; }
+  cx.innerHTML = html; cx.hidden = false; ed.hidden = true;
+}
+
+async function pintarEditor(){
+  const host = document.getElementById("editor");
+  const a = abas.find(x => x.caminho === viva);
+  if (!a){ recado(`<div class="vaziopainel">Nenhum arquivo aberto.</div>`); return; }
+  if (monacoFalhou) return semMonaco(a);
+
+  if (!editor){
+    recado(`<div class="vaziopainel">abrindo o editor…</div>`);
+    try { await carregarMonaco(); }
+    catch (e){ monacoFalhou = true; console.error(e); return semMonaco(a); }
+    editor = monaco.editor.create(host, {
+      theme:"devdesk", automaticLayout:true, fontSize:12.5,
+      fontFamily:'"Cascadia Code","Consolas",ui-monospace,monospace',
+      minimap:{enabled:true}, scrollBeyondLastLine:false,
+      renderWhitespace:"selection", tabSize:4,
+    });
+    // Ctrl+S grava. E o unico atalho que o editor rouba de nos.
+    editor.addCommand(monaco.KeyMod.CtrlCmd | monaco.KeyCode.KeyS, () => gravar());
+  }
+
+  recado(null);                 // a vez e do editor
+  const m = modeloDe(a);
+  if (editor.getModel() !== m) editor.setModel(m);
+  // O host ficou escondido enquanto nao havia arquivo; o Monaco precisa
+  // remedir para nao desenhar com a altura zero que viu antes.
+  editor.layout();
+  pintarCabeca();
+}
+
+/** Se o Monaco nao carregar, a tela nao pode ficar em branco. */
+function semMonaco(a){
+  recado(`<div class="vaziopainel">O editor não carregou —
+       <code>painel/vendor/monaco/</code> está no lugar?<br>
+       Mostrando o arquivo só para leitura.</div><pre>${esc(a.conteudo)}</pre>`);
+}
+
+/** O caminho sem a parte que se repete em todo arquivo desta pasta. */
+let pastaAtual = "";
+function curto(caminho){
+  if (pastaAtual && caminho.startsWith(pastaAtual))
+    return caminho.slice(pastaAtual.length).replace(/^[\\/]+/, "") || caminho;
+  return caminho;
+}
+
+function pintarCabeca(){
+  const cab = document.getElementById("cabeca");
+  const a = abas.find(x => x.caminho === viva);
+  if (!a){ cab.hidden = true; return; }
+  cab.hidden = false;
+  const sujo = sujos.has(a.caminho);
+  cab.innerHTML =
+    `<span class="cam" title="${esc(a.caminho)}">${esc(curto(a.caminho))}</span>
+     <button class="salvar" ${sujo ? "" : "disabled"} onclick="gravar()"
+             title="Ctrl+S">${sujo ? "Salvar" : "Salvo"}</button>
+     <button onclick="noVsCode('${a.caminho.replace(/\\/g,"\\\\").replace(/'/g,"\\'")}')"
+             title="Abrir este arquivo no VS Code de verdade">VS Code</button>`;
+}
+
+async function gravar(){
+  const a = abas.find(x => x.caminho === viva);
+  if (!a || !sujos.has(a.caminho)) return;
+  const m = modelos.get(a.caminho);
+  if (!m) return;
+  await fetch("/api/gravar", {method:"POST", headers:{"Content-Type":"application/json"},
+    body:JSON.stringify({caminho:a.caminho, conteudo:m.getValue()})});
+  sujos.delete(a.caminho);
+  a.conteudo = m.getValue();
+  pintarAbas(); pintarCabeca(); atualizar();
+}
+
+async function desfazerArquivo(caminho){
+  await fetch("/api/desfazer", {method:"POST", headers:{"Content-Type":"application/json"},
+    body:JSON.stringify({caminho})});
+  const m = modelos.get(caminho);
+  if (m) m.dispose();          // o modelo velho guarda o texto que acabou de sair
+  modelos.delete(caminho);
+  sujos.delete(caminho);
+  // RELE AS ABAS NA MARRA. O `atualizar` so troca `abas` quando a LISTA de
+  // caminhos muda, e aqui mudou o conteudo de um deles. Sem isto o modelo
+  // novo nasceria com o texto velho e o desfazer sumiria da tela.
+  const r = await (await fetch("/api/estado")).json();
+  abas = r.abas;
+  visto = 0; coluna.innerHTML = "";
+  await atualizar();
+  pintarPainel();
+}
+
+function pintarAbas(){
+  // NAO abre nem fecha mais o painel da direita. Antes esta linha era
+  //     direita.classList.toggle("aberto", abas.length > 0)
+  // e com tres abas ela estaria errada: fechar o painel so porque nenhum
+  // ARQUIVO esta aberto esconderia o Terminal e o Projeto junto — e
+  // desfazia o Ctrl+B da pessoa na atualizacao seguinte.
+  const barra = document.getElementById("abas");
+  if (!abas.length){
+    barra.innerHTML = "";
+    document.getElementById("cabeca").hidden = true;
+    recado(`<div class="vaziopainel">Nenhum arquivo aberto.<br>
+       Mande <code>abrir &lt;nome&gt;</code>, digite <code>/abrir</code>,
+       ou clique num arquivo na aba Projeto.</div>`);
+    return;
+  }
+
+  if (!abas.some(a => a.caminho === viva)) viva = abas[abas.length-1].caminho;
+
+  barra.innerHTML = abas.map(a => {
+    const c = a.caminho.replace(/\\/g,"\\\\");
+    return `<div class="aba${a.caminho===viva?" viva":""}" onclick="trocar('${c}')">
+       ${sujos.has(a.caminho) ? '<span class="sujo" title="não salvo">●</span>' : ""}
+       ${esc(a.nome)}<span class="x" onclick="event.stopPropagation();fechar('${c}')">×</span>
+     </div>`;
+  }).join("");
+
+  pintarEditor();
+}
+
+function trocar(c){ viva = c; pintarAbas(); }
+async function fechar(c){
+  // Fechar aba suja perde o que voce escreveu. Perder trabalho em
+  // silencio e o pior defeito que um editor pode ter.
+  if (sujos.has(c) && !confirm("Esse arquivo tem mudanças que você não gravou.\n\nFechar mesmo assim?"))
+    return;
+  await fetch("/api/fechar", {method:"POST", headers:{"Content-Type":"application/json"},
+                              body:JSON.stringify({caminho:c})});
+  abas = abas.filter(a => a.caminho !== c);
+  const m = modelos.get(c); if (m) m.dispose();
+  modelos.delete(c); sujos.delete(c);
+  pintarAbas();
+}
+
+async function atualizar(){
+  const r = await (await fetch("/api/estado")).json();
+
+  const mudouArquivos = JSON.stringify(r.abas.map(a=>a.caminho))
+                     !== JSON.stringify(abas.map(a=>a.caminho));
+  const cmdAntes = cartoes.filter(c => c.tipo === "comando").length;
+  cartoes = r.cartoes;
+  if (mudouArquivos){
+    abas = r.abas;
+    viva = abas.length ? abas[abas.length-1].caminho : null;
+  }
+  const cmdAgora = cartoes.filter(c => c.tipo === "comando").length;
+
+  // A TELA TROCA ANTES DE OS CARTOES SEREM DESENHADOS.
+  // Regra que veio junto da ideia: a coisa ja esta visivel quando a pessoa
+  // le o resumo sobre ela, e nao um segundo depois.
+  const mandaram = irPara(r.tela);
+  if (mandaram || mudouArquivos || cmdAgora !== cmdAntes) pintarPainel();
+  pintarEstado(r);
+  if (r.pasta !== pastaAtual){
+    // O projeto mudou: a arvore na tela e de outra pasta e nao vale mais.
+    pastaAtual = r.pasta;
+    esquecerArvore();
+    if (abaViva === "projeto") pintarProjeto();
+  }
+  const elPasta = document.getElementById("pasta");
+  elPasta.textContent = fimDoCaminho(r.pasta);
+  elPasta.title = r.pasta;      // na tela vem cortado; aqui vem inteiro
+  // O `copiarTudo` empresta este mesmo espaco por 1,6s para dizer
+  // "conversa copiada". Sem a trava, a atualizacao de 1,2s apagaria o
+  // recado no meio.
+  if (!tituloEmprestado)
+    document.getElementById("titulo").textContent = soONome(r.pasta) || "DevDesk AI";
+  if (r.medido && r.medido.corpus)
+    document.getElementById("cerebro-info").textContent =
+      `rede: ${r.medido.intencoes} intenções · ${r.medido.corpus.toLocaleString("pt-BR")} frases`;
+
+  // Redesenha do zero quando algo foi resolvido, senão só acrescenta.
+  const precisaTudo = r.cartoes.some(c => c.resolvido) && coluna.children.length;
+  // Os provisórios saem SEMPRE antes de desenhar. Se um `atualizar` de
+  // 1,2s chegar no meio do pensamento, ele levaria os cartões de verdade
+  // para depois dos provisórios e a conversa sairia fora de ordem.
+  coluna.querySelectorAll(".provisorio").forEach(e => e.remove());
+  if (precisaTudo){ coluna.innerHTML = ""; visto = 0; }
+  // Mesma regra do terminal: mede EMBaIXO ANTES de desenhar. Depois de
+  // dar append, o scrollHeight ja cresceu e a conta "so vou rolar se nao
+  // mudou" viraria "acabou de crescer, nao rolo" — exatamente o contrario
+  // do que quem esta no fim espera.
+  const embarco = fluxo.scrollHeight - fluxo.scrollTop - fluxo.clientHeight < 40;
+  const novos = r.cartoes.slice(visto);
+  for (const c of novos) desenhar(c);
+  if (r.cartoes.length > visto){ visto = r.cartoes.length; if (embarco) fluxo.scrollTop = fluxo.scrollHeight; }
+  // A ÚLTIMA FALA DELA APARECE LETRA A LETRA. Só a última, e só quando
+  // veio de uma pergunta sua — recarregar a conversa não fica datilografando
+  // tudo de novo, que seria irritante em vez de bonito.
+  if (revelando && novos.length){
+    revelando = false;
+    const falas = coluna.querySelectorAll(".ela");
+    if (falas.length) datilografar(falas[falas.length - 1]);
+  }
+  pintarEscolhas(r.cartoes);
+}
+
+// A FAIXA DE CORREÇÃO EM CIMA DA CAIXA DE ESCREVER. Sempre o cérebro
+// mais recente, e só quando ele ainda não foi corrigido: clicar faz o
+// POST de ensinar e a faixa some no `atualizar` seguinte — o que volta
+// a aparecer é outra dúvida, não a mesma pergunta repetida.
+function pintarEscolhas(cartoes){
+  // SÓ ABAIXO DO LIMIAR. Acima, ela já respondeu na ponta da língua — não
+  // há o que corrigir ainda, e a faixa "errei?" fora de hora incomoda.
+  const cerebro = [...cartoes].reverse()
+    .find(c => c.tipo === "cerebro" && !c.confiavel && c.candidatos.length);
+  if (!cerebro || cerebro.ensinado){
+    escolhasFecha();
+    return;
+  }
+  ESCOLHAS.innerHTML =
+    `<span class="dica">Errei? Clique na intenção certa, ou me diga a sua pergunta de outro jeito.</span>` +
+    cerebro.candidatos.map(x =>
+      `<span class="escolha" data-frase="${esc(cerebro.frase||"").replace(/"/g,"&quot;")}" data-intencao="${esc(x.nome)}" data-palpite="${esc(cerebro.candidatos[0].nome)}">${esc(x.nome)}</span>`
+    ).join("") +
+    `<span style="display:flex;align-items:center;gap:6px;flex-basis:100%;margin-top:6px">
+       <input id="escolha-escrita" placeholder="ou escreva o que eu devia ter entendido..."
+              value="" style="flex:1;min-width:0">
+       <button onclick="ensinarEscrito()">Ensinar</button>
+     </span>`;
+  ESCOLHAS.hidden = false;
+}
+function escolhasFecha(){ ESCOLHAS.hidden = true; ESCOLHAS.innerHTML = ""; }
+
+// A RESPOSTA DIGITADA NA FAIXA DE CORREÇÃO. Não é clique numa intenção
+// pronta — é a pessoa dizendo com as próprias palavras o que ela quis.
+// Vai para /api/ensinar com a intenção que a própria rede der para ESSA
+// frase nova: se ela escreveu que era "criar um projeto", a rede reconhece
+// e o palpite dela serve de rótulo para a frase que tinha errado.
+async function ensinarEscrito(){
+  const texto = (document.getElementById("escolha-escrita") || {}).value || "";
+  if (!texto.trim()) return;
+  const cerebro = [...cartoes].reverse()
+    .find(c => c.tipo === "cerebro" && !c.confiavel && c.candidatos.length);
+  if (!cerebro) return;
+  const r = await fetch("/api/ensinar", {method:"POST", headers:{"Content-Type":"application/json"},
+    body:JSON.stringify({frase: cerebro.frase, intencao: "", palpite: cerebro.candidatos[0].nome,
+                          reescrita: texto.trim()})});
+  escolhasFecha();
+  visto = 0; coluna.innerHTML = ""; await atualizar();
+}
+
+async function ensinar(frase, intencao, palpite){
+  await fetch("/api/ensinar", {method:"POST", headers:{"Content-Type":"application/json"},
+    body:JSON.stringify({frase, intencao, palpite})});
+  escolhasFecha();
+  visto = 0; coluna.innerHTML = ""; atualizar();
+}
+coluna.addEventListener("click", ev => {
+  const el = ev.target.closest(".escolha[data-intencao]");
+  if (!el || el.classList.contains("feita")) return;
+  ensinar(el.dataset.frase || "", el.dataset.intencao, el.dataset.palpite || "");
+});
+ESCOLHAS.addEventListener("click", ev => {
+  const el = ev.target.closest(".escolha[data-intencao]");
+  if (!el || el.classList.contains("feita")) return;
+  ensinar(el.dataset.frase || "", el.dataset.intencao, el.dataset.palpite || "");
+});
+async function noVsCode(caminho){
+  await fetch("/api/vscode", {method:"POST", headers:{"Content-Type":"application/json"},
+    body:JSON.stringify({caminho})});
+  atualizar();
+}
+async function abrirAqui(caminho){
+  await fetch("/api/abrir", {method:"POST", headers:{"Content-Type":"application/json"},
+    body:JSON.stringify({caminho})});
+  atualizar();
+}
+
+async function responder(id, sim){
+  await fetch(sim ? "/api/confirmar" : "/api/recusar",
+    {method:"POST", headers:{"Content-Type":"application/json"}, body:JSON.stringify({id})});
+  visto = 0; coluna.innerHTML = ""; atualizar();
+}
+
+// ══════════════════════════════════════════════════════════════════
+//  O MENU DA BARRA  /
+//
+//  Ideia do `slash-command-menu.tsx` do Agent Canvas (MIT).
+//
+//  ELE NAO COMPETE COM A REDE — COMPLEMENTA.
+//
+//  Sao dois caminhos para publicos diferentes, e o projeto precisa dos
+//  dois. Quem ja sabe o que quer digita `/abrir` e acaba: caminho
+//  deterministico, zero adivinhacao, zero chance de a rede errar. Quem
+//  NAO sabe escreve do jeito que fala — "fica rodaninho e nao vem nada" —
+//  e ai a rede trabalha, e se ela nao tiver certeza ela pergunta.
+//
+//  Tirar a linguagem aberta para ter so a barra seria voltar a exigir que
+//  a pessoa fale como maquina. Ter so a linguagem aberta e obrigar quem
+//  ja sabe a torcer para ser entendido.
+// ══════════════════════════════════════════════════════════════════
+const BARRA = [
+  {c:"/abrir",     a:"<arquivo>", d:"abre um arquivo no painel",    f:v => mandar("abrir " + v)},
+  {c:"/procurar",  a:"<nome>",    d:"procura por nome na pasta",    f:v => mandar("procurar " + v)},
+  {c:"/code",      a:"<pasta>",   d:"abre no VS Code",              f:v => mandar("code " + v)},
+  {c:"/vs",        a:"<pasta>",   d:"abre no Visual Studio",        f:v => mandar("abrir " + v + " no visual studio")},
+  {c:"/rodar",     a:"<comando>", d:"roda um comando",              f:v => mandar("> " + v)},
+  {c:"/criar",     a:"<pedido>",  d:"monta um projeto do zero",     f:v => mandar("criar projeto " + v)},
+  {c:"/maquina",   a:"",          d:"disco, python, tamanho",       f:() => mandar("como esta o sistema")},
+  {c:"/logs",      a:"",          d:"procura arquivos de log",      f:() => mandar("procurar logs")},
+  {c:"/mudou",     a:"",          d:"o que foi mexido por último",  f:() => mandar("o que foi mexido por ultimo")},
+  {c:"/arquivo",   a:"",          d:"aba Arquivo",                  f:() => verAba("arquivo"),  local:1},
+  {c:"/terminal",  a:"",          d:"aba Terminal",                 f:() => verAba("terminal"), local:1},
+  {c:"/projeto",   a:"",          d:"aba Projeto",                  f:() => verAba("projeto"),  local:1},
+  {c:"/ajuda",     a:"",          d:"o que eu faço",                f:() => mandar("ajuda")},
+  {c:"/limpar",    a:"",          d:"nova conversa",                f:() => novoChat(),         local:1},
+];
+
+const CAIXA = document.getElementById("e");
+
+/** A ALTURA DA CAIXA SEGUE O TEXTO.
+ *
+ *  O truque das duas linhas: zerar a altura antes de ler `scrollHeight`.
+ *  Sem isso `scrollHeight` nunca DIMINUI — ele devolve o maior entre o
+ *  conteudo e a altura atual, entao a caixa cresceria e nunca voltaria ao
+ *  tamanho de uma linha depois de apagar o texto.
+ *
+ *  `offsetHeight - clientHeight` sao as bordas. Com `box-sizing:border-box`
+ *  a altura que eu escrevo INCLUI a borda, mas `scrollHeight` nao a conta:
+ *  somar a diferenca e o que evita a caixa nascer dois pixels curta e
+ *  mostrar uma barra de rolagem que nao precisava existir.
+ *
+ *  O teto e do CSS (`max-height`), nao daqui: passando dele a caixa para
+ *  de crescer e rola por dentro, e a conversa continua visivel.
+ */
+let alturaEscolhida = parseInt(guardado("devdesk-caixa", "")) || 0;
+
+function caixaCresce(){
+  // O TAMANHO ESCOLHIDO A MAO GANHA DO AUTOMATICO.
+  //
+  // As duas coisas querem mandar na mesma altura, e sem uma regra clara
+  // elas brigam: voce arrasta a caixa para 300px, digita uma letra e ela
+  // volta para 50px. Entao: enquanto houver um tamanho escolhido, ele e o
+  // PISO — o texto ainda pode fazer a caixa crescer alem dele, mas nunca
+  // encolhe-la abaixo. Arrastar de volta para baixo desfaz a escolha.
+  CAIXA.style.height = "auto";
+  const borda = CAIXA.offsetHeight - CAIXA.clientHeight;
+  const doTexto = CAIXA.scrollHeight + borda;
+  CAIXA.style.height = Math.max(doTexto, alturaEscolhida) + "px";
+  CAIXA.classList.toggle("mao", alturaEscolhida > 0);
+}
+
+/* A ALCA DE CIMA: puxar para cima aumenta, para baixo diminui.
+   O sinal e invertido de proposito — a caixa cresce para cima porque o
+   rodape dela esta ancorado embaixo, entao "subiu o dedo, subiu o teto".
+   `setPointerCapture` e o que faz o arraste continuar valendo mesmo com o
+   cursor saindo de cima da alca, que numa faixa de 10px acontece sempre. */
+const PUXA = document.getElementById("puxa");
+const CAIXA_MIN = 47;
+let arrastando = null;
+
+PUXA.addEventListener("pointerdown", ev => {
+  ev.preventDefault();
+  PUXA.setPointerCapture(ev.pointerId);
+  PUXA.classList.add("puxando");
+  arrastando = {y: ev.clientY, altura: CAIXA.getBoundingClientRect().height};
+});
+PUXA.addEventListener("pointermove", ev => {
+  if (!arrastando) return;
+  const teto = Math.min(innerHeight * 0.7, 520);
+  const nova = Math.round(Math.max(CAIXA_MIN,
+      Math.min(teto, arrastando.altura + (arrastando.y - ev.clientY))));
+  alturaEscolhida = nova;
+  CAIXA.style.height = nova + "px";
+  CAIXA.classList.add("mao");
+});
+PUXA.addEventListener("pointerup", ev => {
+  if (!arrastando) return;
+  arrastando = null;
+  PUXA.classList.remove("puxando");
+  PUXA.releasePointerCapture(ev.pointerId);
+  // ENCOLHER ATE O TAMANHO DO TEXTO E PEDIR O AUTOMATICO DE VOLTA.
+  CAIXA.style.height = "auto";
+  const so_texto = CAIXA.scrollHeight + (CAIXA.offsetHeight - CAIXA.clientHeight);
+  if (alturaEscolhida <= so_texto + 4) alturaEscolhida = 0;
+  guardar("devdesk-caixa", alturaEscolhida);
+  caixaCresce();
+});
+// duplo clique na alca: volta ao automatico sem precisar mirar
+PUXA.addEventListener("dblclick", () => {
+  alturaEscolhida = 0; guardar("devdesk-caixa", 0); caixaCresce();
+});
+const BARRAEL = document.getElementById("barra");
+let barraLista = [], barraOnde = 0;
+
+function barraFiltra(texto){
+  if (!texto.startsWith("/")) return null;
+  // So enquanto a pessoa esta ESCREVENDO o comando. Depois do espaco ela
+  // ja escolheu e esta digitando o argumento: o menu sai da frente.
+  if (texto.includes(" ")) return null;
+  const q = texto.slice(1).toLowerCase();
+  return BARRA.filter(x => x.c.slice(1).startsWith(q));
+}
+
+function barraPinta(){
+  if (!barraLista.length){ BARRAEL.hidden = true; return; }
+  BARRAEL.hidden = false;
+  BARRAEL.innerHTML = `<div class="titulo">↑↓ escolhe · Enter usa · Esc fecha</div>` +
+    barraLista.map((x,i) =>
+      `<div class="it${i===barraOnde?" viva":""}" data-i="${i}">
+         <span class="c">${x.c}</span><span class="a">${esc(x.a)}</span>
+         <span class="d">${esc(x.d)}</span></div>`).join("");
+  BARRAEL.querySelectorAll(".it").forEach(el => {
+    el.onmousedown = ev => { ev.preventDefault(); barraUsa(+el.dataset.i); };
+  });
+  const viva = BARRAEL.querySelector(".it.viva");
+  if (viva) viva.scrollIntoView({block:"nearest"});
+}
+
+function barraFecha(){ barraLista = []; BARRAEL.hidden = true; }
+
+function barraUsa(i){
+  const x = barraLista[i]; if (!x) return;
+  barraFecha();
+  if (x.a){
+    // Precisa de argumento: deixa o comando escrito e devolve o cursor.
+    // Executar sem argumento so para mostrar um erro e desperdicar o clique.
+    CAIXA.value = x.c + " "; caixaCresce();
+    CAIXA.focus();
+    return;
+  }
+  CAIXA.value = ""; caixaCresce();
+  x.f();
+}
+
+CAIXA.addEventListener("input", () => {
+  caixaCresce();
+  barraLista = barraFiltra(CAIXA.value) || [];
+  barraOnde = 0;
+  barraPinta();
+});
+
+CAIXA.addEventListener("keydown", ev => {
+  // ENTER CONTINUA ENVIANDO. Num <input> quem enviava era o navegador,
+  // de graca; num <textarea> Enter e quebra de linha e o formulario
+  // nunca seria enviado. Shift+Enter passa a ser a quebra de linha a
+  // mao, que e o que todo chat faz.
+  if (BARRAEL.hidden && ev.key === "Enter" && !ev.shiftKey && !ev.isComposing){
+    ev.preventDefault();
+    document.getElementById("f").requestSubmit();
+    return;
+  }
+  if (BARRAEL.hidden) return;
+  if (ev.key === "ArrowDown"){ ev.preventDefault(); barraOnde = (barraOnde+1) % barraLista.length; barraPinta(); }
+  else if (ev.key === "ArrowUp"){ ev.preventDefault(); barraOnde = (barraOnde-1+barraLista.length) % barraLista.length; barraPinta(); }
+  else if (ev.key === "Enter"){ ev.preventDefault(); barraUsa(barraOnde); }
+  else if (ev.key === "Escape"){ ev.preventDefault(); barraFecha(); }
+  else if (ev.key === "Tab"){ ev.preventDefault(); barraUsa(barraOnde); }
+});
+CAIXA.addEventListener("blur", () => setTimeout(barraFecha, 120));
+
+/** Traduz `/comando argumento`. Devolve o que fazer com a caixa:
+ *
+ *    "feito"      o comando rodou     -> limpa a caixa
+ *    "esperando"  falta o argumento   -> NAO limpa, o comando fica escrito
+ *    <texto>      nao e comando meu   -> manda como frase
+ *
+ *  (Antes isto devolvia `null` para os dois primeiros casos e quem chamava
+ *  tentava adivinhar pelo conteudo da caixa: "se ainda comeca com /, e
+ *  porque estou esperando argumento". Errado — depois de `/abrir x.py` a
+ *  caixa TAMBEM comeca com /, entao ela nao era limpa e a proxima frase
+ *  grudava na anterior: viraram "abrir x.pycomo esta o disco". Devolver o
+ *  que aconteceu, em vez de deixar adivinhar, mata a classe inteira.) */
+function barraTraduz(texto){
+  if (!texto.startsWith("/")) return texto;
+  const corte = texto.indexOf(" ");
+  const nome = corte < 0 ? texto : texto.slice(0, corte);
+  const resto = corte < 0 ? "" : texto.slice(corte+1).trim();
+  const x = BARRA.find(y => y.c === nome.toLowerCase());
+  if (!x) return texto;               // /qualquercoisa vai como frase mesmo
+  if (x.a && !resto){ CAIXA.value = nome + " "; caixaCresce(); CAIXA.focus(); return "esperando"; }
+  x.f(resto);
+  return "feito";
+}
+
+// ══════════════════════════════════════════════════════════════════════
+//  VER ELA PENSANDO — e o que isso É, sem enrolação
+//
+//  A rede classifica a frase em uns 40 milissegundos. É rápido demais
+//  para você ver acontecer: a resposta já está na tela antes de o olho
+//  chegar lá.
+//
+//  Então a TELA espera um pouco antes de mostrar. A conta já acabou; o
+//  que está sendo segurado é o desenho, não o pensamento. Isso é uma
+//  escolha de apresentação, e eu escrevo aqui em vez de fingir que a
+//  rede é mais lenta do que é.
+//
+//  Enquanto espera, a chuva sobe para 20% e o cursor pisca no lugar da
+//  resposta. É o mesmo que um terminal antigo fazia: mostrar que está
+//  ocupado em vez de ficar mudo.
+//
+//  Mexer em PENSANDO_MINIMO muda só a ansiedade, nunca o resultado.
+const PENSANDO_MINIMO = 850;      // ms que a tela segura antes de mostrar
+const LETRA_MS = 9;               // ms por caractere ao revelar a resposta
+
+// A SUA FRASE APARECE NA HORA, antes de o servidor responder — e o
+// "pensando" vem logo ABAIXO dela.
+//
+// Na primeira versão eu só punha o "pensando", e ele saía ACIMA da sua
+// mensagem: a frase só chegava na tela depois da resposta do servidor, e
+// o cartão do pensando já estava lá. Ficava lendo de trás para frente.
+//
+// Estes dois cartões são PROVISÓRIOS, marcados com a classe `provisorio`,
+// e são removidos antes de o `atualizar` desenhar os de verdade. Sem essa
+// remoção a frase apareceria duas vezes.
+function pensandoNaTela(ligado, texto){
+  if (ligado){
+    if (document.querySelector(".provisorio")) return;
+    const rolava = fluxo.scrollHeight - fluxo.scrollTop - fluxo.clientHeight < 40;
+    if (texto){
+      const meu = document.createElement("div");
+      meu.className = "cartao provisorio";
+      meu.innerHTML = '<div class="voce"></div>';
+      meu.querySelector(".voce").textContent = texto;
+      coluna.appendChild(meu);
+    }
+    const d = document.createElement("div");
+    d.className = "cartao provisorio"; d.id = "pensando-agora";
+    d.innerHTML = '<div class="rotulo"><span class="ic">◆</span>' +
+                  '<span>pensando</span><span class="cursor"></span></div>';
+    coluna.appendChild(d);
+    if (rolava) fluxo.scrollTop = fluxo.scrollHeight;
+    chuvaNoEstado("pensando");
+  } else {
+    coluna.querySelectorAll(".provisorio").forEach(e => e.remove());
+  }
+}
+
+document.getElementById("f").onsubmit = async ev => {
+  ev.preventDefault();
+  barraFecha();
+  escolhasFecha();
+  const texto = CAIXA.value.trim(); if (!texto) return;
+  if (texto.startsWith("/")){
+    const oque = barraTraduz(texto);
+    if (oque === "feito"){ CAIXA.value = ""; caixaCresce(); return; }
+    if (oque === "esperando") return;      // a caixa ja tem `/comando ` escrito
+  }
+  CAIXA.value = ""; caixaCresce();
+  pensandoNaTela(true, texto);
+  const t0 = performance.now();
+  await fetch("/api/mensagem", {method:"POST",
+    headers:{"Content-Type":"application/json"}, body:JSON.stringify({texto})});
+  // Se ela respondeu antes do tempo, a tela completa a diferença. Se
+  // demorou mais que isso — um comando de verdade rodando — não espera
+  // mais nada: o atraso é do trabalho, e trabalho não se disfarça.
+  const falta = PENSANDO_MINIMO - (performance.now() - t0);
+  if (falta > 0) await new Promise(r => setTimeout(r, falta));
+  pensandoNaTela(false);
+  revelando = true;
+  atualizar();
+};
+
+
+
+// ══════════════════════════════════════════════════════════════════
+//  OS MENUS
+// ══════════════════════════════════════════════════════════════════
+const MENUS = {
+  arquivo: [
+    ["Novo chat", "Ctrl+N", () => novoChat()],
+    ["Abrir arquivo…", "Ctrl+O", () => perguntar("Caminho ou nome do arquivo:", v => mandar("abrir " + v))],
+    ["Abrir pasta no VS Code…", "", () => perguntar("Nome ou caminho da pasta:", v => mandar("code " + v))],
+    ["Abrir no Visual Studio…", "", () => perguntar("Nome ou caminho:", v => mandar("abrir " + v + " no visual studio"))],
+    "-",
+    ["Fechar projeto", "", () => fecharProjeto()],
+    "-",
+    ["Perfil do usuário…", "Ctrl+,", () => abrirPerfil()],
+    "-",
+    ["Sair", "", () => window.close()],
+  ],
+  editar: [
+    ["Copiar conversa", "", () => copiarTudo()],
+    ["Limpar conversa", "", () => novoChat()],
+  ],
+  visualizar: [
+    ["Aba Arquivo", "Ctrl+1", () => verAba("arquivo")],
+    ["Aba Terminal", "Ctrl+2", () => verAba("terminal")],
+    ["Aba Projeto", "Ctrl+3", () => verAba("projeto")],
+    "-",
+    ["Abas: fechar todas", "", () => fecharTodasAsAbas()],
+    ["Abas: mostrar todas", "", () => abrirTodasAsAbas()],
+    "-",
+    ["Painel da direita", "Ctrl+B", () => alternar("direita")],
+    ["Barra lateral", "Ctrl+Shift+B", () => alternar("esquerda")],
+    "-",
+    ["Fonte: menor", "Ctrl+-", () => fonteMenor()],
+    ["Fonte: maior", "Ctrl++", () => fonteMaior()],
+    "-",
+    ["Claridade: escuro", "Alt+1 … Alt+5", () => maisEscuro()],
+    ["Claridade: claro", "Alt+1 … Alt+5", () => maisClaro()],
+    "-",
+    ["Chuva de código: ligar / desligar", "", () => alternarChuva()],
+  ],
+  ir: [
+    ["Procurar…", "Ctrl+P", () => perguntar("Procurar por nome:", v => mandar("procurar " + v))],
+    ["Ir para pasta…", "", () => perguntar("Pasta:", v => mandar("> dir \"" + v + "\""))],
+  ],
+  terminal: [
+    ["Novo comando", "Ctrl+`", () => { const e = document.getElementById("e");
+                                       e.value = "> "; e.focus(); }],
+    ["O que mudou por último", "", () => mandar("o que foi mexido por ultimo")],
+    ["Estado da máquina", "", () => mandar("como esta o sistema")],
+  ],
+  ajuda: [
+    ["O que eu faço?", "", () => mandar("ajuda")],
+    ["Como eu funciono?", "", () => mandar("como voce funciona")],
+  ],
+};
+
+let gaveta = null;
+function fecharGaveta(){ if (gaveta){ gaveta.remove(); gaveta = null; }
+  document.querySelectorAll("#menu .m").forEach(m => m.classList.remove("viva")); }
+
+document.querySelectorAll("#menu .m").forEach(m => {
+  const abrirGaveta = () => {
+    const jaEra = m.classList.contains("viva");
+    fecharGaveta();
+    if (jaEra) return;
+    m.classList.add("viva");
+    gaveta = document.createElement("div");
+    gaveta.className = "gaveta";
+    gaveta.style.left = m.offsetLeft + "px";
+    MENUS[m.dataset.menu].forEach(it => {
+      if (it === "-"){ gaveta.appendChild(document.createElement("hr")); return; }
+      const d = document.createElement("div");
+      d.innerHTML = esc(it[0]) + (it[1] ? `<span>${esc(it[1])}</span>` : "");
+      d.onclick = () => { fecharGaveta(); it[2](); };
+      gaveta.appendChild(d);
+    });
+    document.getElementById("menu").appendChild(gaveta);
+  };
+  m.onclick = abrirGaveta;
+  // Depois de aberto, passar o mouse troca de menu — como em qualquer app.
+  m.onmouseenter = () => { if (gaveta) abrirGaveta(); };
+});
+document.addEventListener("click", ev => {
+  if (!ev.target.closest("#menu")) fecharGaveta();
+});
+
+function perguntar(rotulo, entao){
+  const v = prompt(rotulo);
+  if (v && v.trim()) entao(v.trim());
+}
+async function mandar(texto){
+  escolhasFecha();
+  await fetch("/api/mensagem", {method:"POST", headers:{"Content-Type":"application/json"},
+    body:JSON.stringify({texto})});
+  atualizar();
+}
+// Fecha o projeto: volta para a pasta com que o aplicativo subiu e
+// larga as abas, que eram arquivos DAQUELE projeto.
+async function fecharProjeto(){
+  try {
+    await fetch("/api/projeto/fechar", {method:"POST",
+      headers:{"Content-Type":"application/json"}, body:"{}"});
+  } catch (e) {}
+  arvoreFilhos.clear();          // a árvore é de outra pasta agora
+  await atualizar();
+  await pintarProjeto();
+}
+async function novoChat(){
+  await fetch("/api/conversa/nova", {method:"POST",
+    headers:{"Content-Type":"application/json"}, body:"{}"});
+  await recomecarTela();
+}
+let tituloEmprestado = false;
+function copiarTudo(){
+  navigator.clipboard.writeText(coluna.innerText).then(
+    () => { const t = document.getElementById("titulo");
+            const antes = t.textContent;
+            tituloEmprestado = true;
+            t.textContent = "conversa copiada";
+            setTimeout(() => { t.textContent = antes; tituloEmprestado = false; }, 1600); });
+}
+
+// ══════════════════════════════════════════════════════════════════
+//  PAINÉIS DO TAMANHO QUE A PESSOA QUISER
+//
+//  Guardado no navegador: quem ajustou uma vez não deve ajustar de novo
+//  a cada abertura. É o app que se adapta, não a pessoa.
+// ══════════════════════════════════════════════════════════════════
+const ESQ = document.getElementById("esquerda");
+const DIR = document.getElementById("direita");
+
+function guardado(chave, padrao){
+  try { return localStorage.getItem(chave) ?? padrao; } catch { return padrao; }
+}
+function guardar(chave, valor){ try { localStorage.setItem(chave, valor); } catch {} }
+
+ESQ.style.width = guardado("devdesk:esquerda", "232px");
+DIR.style.setProperty("--w-direita", guardado("devdesk:direita", "46%"));
+if (guardado("devdesk:esconde-esquerda", "0") === "1") ESQ.style.display = "none";
+
+function alternar(lado){
+  if (lado === "esquerda"){
+    const esconder = ESQ.style.display !== "none";
+    ESQ.style.display = esconder ? "none" : "flex";
+    guardar("devdesk:esconde-esquerda", esconder ? "1" : "0");
+  } else {
+    DIR.classList.toggle("aberto");
+  }
+}
+// ══════════════════════════════════════════════════════════════════════
+//  O TAMANHO DA FONTE
+//
+//  A tela inteira é medida em PIXELS — 12,5px de aba, 13px de menu, 15px
+//  de conversa. Mexer no `font-size` da raiz não faria nada, porque nada
+//  aqui está em `em` ou `rem`. Reescrever cada uma dessas medidas para
+//  serem relativas seria trocar umas duzentas linhas de CSS e ganhar
+//  bugs de arredondamento em cada uma.
+//
+//  `zoom` faz o serviço numa linha: o navegador multiplica TUDO junto —
+//  fonte, espaçamento, borda, ícone — e a tela cresce inteira, no lugar
+//  de crescer só a letra e estourar as caixas.
+//
+//  Fica no #janela e no #entrada, e NÃO no <html>: a chuva de código é um
+//  canvas `position:fixed` dimensionado em pixels reais pelo JavaScript.
+//  Com zoom na raiz ela passaria a cobrir só um pedaço da tela.
+// ══════════════════════════════════════════════════════════════════════
+const FONTE_MIN = 0.75, FONTE_MAX = 1.6, FONTE_PASSO = 0.1;
+let fonteAgora = 1.0;
+
+function fonte(n){
+  fonteAgora = Math.max(FONTE_MIN, Math.min(FONTE_MAX, Math.round(n * 100) / 100));
+  // COLCHETE, e não parêntese. `("a", "b", "c")` é o operador VÍRGULA do
+  // JavaScript: avalia os três e devolve o ÚLTIMO. Escrito assim, o laço
+  // rodava uma vez só, no "perfil", e a tela inteira ficava do mesmo
+  // tamanho — sem erro nenhum no console. A prova pegou: o zoom do
+  // #janela lia NaN porque nunca tinha sido escrito.
+  for (const id of ["janela", "entrada", "perfil"]){
+    const el = document.getElementById(id);
+    if (el) el.style.zoom = String(fonteAgora);
+  }
+  try { localStorage.setItem("devdesk-fonte", fonteAgora); } catch (e) {}
+  if (luzPronta) avisarNaBarra("fonte " + Math.round(fonteAgora * 100) + "%");
+  return fonteAgora;
+}
+function fonteMaior(){ fonte(fonteAgora + FONTE_PASSO); }
+function fonteMenor(){ fonte(fonteAgora - FONTE_PASSO); }
+function fonteNormal(){ fonte(1.0); }
+
+addEventListener("keydown", e => {
+  if (!e.ctrlKey) return;
+  if (e.key === "+" || e.key === "=" ){ e.preventDefault(); fonteMaior(); }
+  else if (e.key === "-" || e.key === "_"){ e.preventDefault(); fonteMenor(); }
+  else if (e.key === "0"){ e.preventDefault(); fonteNormal(); }
+});
+
+function reporTamanhos(){
+  ESQ.style.width = "232px"; ESQ.style.display = "flex";
+  DIR.style.setProperty("--w-direita", "46%");
+  guardar("devdesk:esquerda", "232px"); guardar("devdesk:direita", "46%");
+  guardar("devdesk:esconde-esquerda", "0");
+}
+
+document.querySelectorAll(".puxador").forEach(p => {
+  p.onmousedown = ev => {
+    ev.preventDefault();
+    p.classList.add("puxando");
+    const lado = p.dataset.lado;
+    const x0 = ev.clientX;
+    const w0 = lado === "esquerda" ? ESQ.offsetWidth : DIR.offsetWidth;
+    const mover = e => {
+      const d = lado === "esquerda" ? (e.clientX - x0) : (x0 - e.clientX);
+      const w = Math.max(150, Math.min(w0 + d, window.innerWidth * 0.7));
+      if (lado === "esquerda") ESQ.style.width = w + "px";
+      else DIR.style.setProperty("--w-direita", w + "px");
+    };
+    const soltar = () => {
+      p.classList.remove("puxando");
+      document.removeEventListener("mousemove", mover);
+      document.removeEventListener("mouseup", soltar);
+      guardar("devdesk:esquerda", ESQ.style.width);
+      guardar("devdesk:direita", DIR.style.getPropertyValue("--w-direita"));
+    };
+    document.addEventListener("mousemove", mover);
+    document.addEventListener("mouseup", soltar);
+  };
+});
+
+document.getElementById("novo").onclick = novoChat;
+
+document.addEventListener("keydown", ev => {
+  if (!(ev.ctrlKey || ev.metaKey)) return;
+  const k = ev.key.toLowerCase();
+  if (k === "n"){ ev.preventDefault(); novoChat(); }
+  else if (k === "b"){ ev.preventDefault(); alternar(ev.shiftKey ? "esquerda" : "direita"); }
+  else if (k === "o"){ ev.preventDefault(); perguntar("Caminho ou nome do arquivo:", v => mandar("abrir " + v)); }
+  else if (k === "p"){ ev.preventDefault(); perguntar("Procurar por nome:", v => mandar("procurar " + v)); }
+  else if (k === "1"){ ev.preventDefault(); verAba("arquivo"); }
+  else if (k === "2"){ ev.preventDefault(); verAba("terminal"); }
+  else if (k === "3"){ ev.preventDefault(); verAba("projeto"); }
+});
+
+// ══════════════════════════════════════════════════════════════════
+//  A LATERAL: projetos e tarefas
+// ══════════════════════════════════════════════════════════════════
+// ══════════════════════════════════════════════════════════════════
+//  O HISTORICO DE CONVERSAS
+//
+//  Cada conversa e um arquivo em `dados/conversas/`. Aqui na barra ela
+//  reabre com um clique, renomeia com dois, e apaga no x.
+//
+//  REABRIR NAO REORDENA A LISTA, e isso e de proposito: a ordem e por
+//  ultima MEXIDA. So passar o olho numa conversa velha nao deveria
+//  empurrar para baixo a de ontem em que voce ainda vai mexer. Quando
+//  voce fala nela, ai sim ela sobe. Quem esta aberta se ve pelo destaque.
+// ══════════════════════════════════════════════════════════════════
+let renomeando = null;      // id em edicao: segura o redesenho de 4s
+
+function pintarConversas(lista){
+  const alvo = document.getElementById("conversas");
+  // Redesenhar por cima de um campo aberto apagaria o que a pessoa esta
+  // digitando no meio da palavra. A lista pode esperar.
+  if (renomeando) return;
+  if (!lista.length){ alvo.innerHTML = `<div class="vazio">nenhuma ainda</div>`; return; }
+  alvo.innerHTML = lista.map(c => {
+    const id = esc(c.id);
+    return `<div class="item${c.aqui ? " viva" : ""}" data-id="${id}">
+      <span class="nome" title="${esc(c.nome)}">${esc(c.nome)}</span>
+      <span class="n">${c.falas}</span>
+      <span class="acao lapis" data-que="renomear" title="Renomear">✎</span>
+      <span class="acao" data-que="apagar" title="Apagar">×</span>
+    </div>`;
+  }).join("");
+
+  alvo.querySelectorAll(".item").forEach(el => {
+    const id = el.dataset.id;
+    el.querySelector(".nome").onclick = () => trocarConversa(id);
+    el.querySelector(".nome").ondblclick = ev => { ev.stopPropagation(); editarNome(el, id); };
+    el.querySelector('[data-que="renomear"]').onclick = ev => { ev.stopPropagation(); editarNome(el, id); };
+    el.querySelector('[data-que="apagar"]').onclick = ev => { ev.stopPropagation(); apagarConversa(el, id); };
+  });
+}
+
+function editarNome(el, id){
+  const span = el.querySelector(".nome");
+  const antes = span.textContent;
+  renomeando = id;
+  const campo = document.createElement("input");
+  campo.value = antes;
+  span.replaceWith(campo);
+  campo.focus(); campo.select();
+  let fechado = false;
+  const fechar = async guardar => {
+    if (fechado) return;            // blur dispara junto do Enter
+    fechado = true;
+    const novo = campo.value.trim();
+    renomeando = null;
+    if (guardar && novo && novo !== antes){
+      await fetch("/api/conversa/renomear", {method:"POST",
+        headers:{"Content-Type":"application/json"}, body:JSON.stringify({id, nome:novo})});
+    }
+    lateral();
+  };
+  campo.onkeydown = ev => {
+    if (ev.key === "Enter"){ ev.preventDefault(); fechar(true); }
+    else if (ev.key === "Escape"){ ev.preventDefault(); fechar(false); }
+  };
+  campo.onblur = () => fechar(true);
+}
+
+async function apagarConversa(el, id){
+  const nome = el.querySelector(".nome")?.textContent || "esta conversa";
+  if (!confirm(`Apagar "${nome}"?\n\nO arquivo dela some da pasta e não tem volta.`)) return;
+  await fetch("/api/conversa/apagar", {method:"POST",
+    headers:{"Content-Type":"application/json"}, body:JSON.stringify({id})});
+  await recomecarTela();
+}
+
+async function trocarConversa(id){
+  await fetch("/api/conversa/abrir", {method:"POST",
+    headers:{"Content-Type":"application/json"}, body:JSON.stringify({id})});
+  await recomecarTela();
+}
+
+/** Troca de conversa e trocar TUDO: cartoes, abas e os modelos do editor.
+ *  Deixar um modelo do Monaco vivo entre conversas mostraria o arquivo da
+ *  conversa anterior dentro da nova. */
+async function recomecarTela(){
+  for (const m of modelos.values()) m.dispose();
+  modelos.clear(); sujos.clear();
+  abas = []; viva = null; telaEm = 0;
+  visto = 0; coluna.innerHTML = "";
+  const r = await (await fetch("/api/estado")).json();
+  abas = r.abas;
+  await atualizar();
+  pintarPainel();
+  lateral();
+}
+
+async function lateral(){
+  const r = await (await fetch("/api/lateral")).json();
+  pintarConversas(r.conversas || []);
+  document.getElementById("tarefas").innerHTML = r.tarefas.length
+    ? r.tarefas.map(t =>
+        `<div class="item pend" title="${esc(t.comando)}">⚠ ${esc(t.comando)}</div>`).join("")
+    : `<div class="vazio">nada esperando</div>`;
+}
+
+pintarPainel();
+atualizar();
+lateral();
+setInterval(atualizar, 1200);
+setInterval(lateral, 4000);
+
+
+// ══════════════════════════════════════════════════════════════════════
+//  A CHUVA DE CÓDIGO — ela obedece ao ESTADO da rede
+//
+//  Enfeite que se mexe sozinho o tempo todo cansa e não diz nada. Amarrada
+//  ao estado, a chuva vira informação de canto de olho: você está lendo
+//  código e a periferia avisa que ela começou a pensar, sem você precisar
+//  virar a cabeça para o bloquinho de status.
+//
+//    forca   0 a 1   quanto ela aparece
+//    veloc   ms      intervalo entre quadros; 0 = congelada
+//    rastro  0 a 1   quanto apaga do quadro anterior; menor = rabo maior
+//
+//  A CAUDA, E POR QUE ELA EXISTE. Classificar uma frase leva uns 40
+//  milissegundos. Nesse tempo a chuva mal pisca, e você nunca veria ela
+//  pensando. Então o estado "pensando" segura a chuva forte por mais um
+//  tempo depois de acabar — a rede já respondeu, a tela ainda mostra o
+//  que aconteceu.
+//
+//  Isto NÃO atrasa o programa. A resposta aparece na hora; quem fica para
+//  trás é só o desenho do fundo. Atrasar de verdade para parecer que
+//  pensou seria mentira; deixar o rastro à mostra é legenda.
+// ══════════════════════════════════════════════════════════════════════
+const CHUVA_POR_ESTADO = {
+  parado:                 {forca:0.09, veloc: 95, rastro:0.09},
+  pensando:               {forca:0.20, veloc: 42, rastro:0.045},
+  investigando:           {forca:0.22, veloc: 30, rastro:0.035},
+  aguardando_confirmacao: {forca:0.07, veloc:150, rastro:0.13},
+  aguardando_voce:        {forca:0.07, veloc:150, rastro:0.13},
+  erro:                   {forca:0.10, veloc:  0, rastro:0.10},
+};
+const CAUDA_MS = 1400;   // quanto a chuva forte fica depois do pensamento
+
+// A RAJADA DA ENTRADA. Um segundo e meio de chuva cheia quando a senha
+// confere, enquanto a tela de entrada some por baixo dela. É o único
+// momento do programa em que a chuva é enfeite puro — e é de propósito:
+// entrar acontece uma vez por sessão, e vale marcar.
+const RAJADA = {forca:0.55, veloc:22, rastro:0.028};
+const RAJADA_MS = 1500;
+
+const cv = document.getElementById("chuva");
+const ctx = cv.getContext("2d");
+const PINGOS = "アイウエオカキクケコサシスセソタチツテトナニヌネノハヒフヘホ" +
+               "0123456789<>{}[]/\\=+*·";
+let colunas = [], passo = 16, chuvaTimer = null, chuvaLigada = true;
+let chuvaCauda = null, estadoChuva = "parado";
+
+function medirChuva(){
+  cv.width = innerWidth; cv.height = innerHeight;
+  colunas = new Array(Math.ceil(cv.width / passo)).fill(0)
+              .map(() => Math.random() * cv.height / passo | 0);
+}
+addEventListener("resize", medirChuva);
+
+function pingar(){
+  ctx.fillStyle = "rgba(0,0,0," + (cv.dataset.rastro || 0.1) + ")";
+  ctx.fillRect(0, 0, cv.width, cv.height);
+  ctx.font = passo + "px " + getComputedStyle(document.documentElement)
+                               .getPropertyValue("--mono");
+  ctx.fillStyle = cv.dataset.cor || "#00FF41";
+  for (let i = 0; i < colunas.length; i++){
+    ctx.fillText(PINGOS[Math.random()*PINGOS.length|0], i*passo, colunas[i]*passo);
+    if (colunas[i]*passo > cv.height && Math.random() > 0.975) colunas[i] = 0;
+    colunas[i]++;
+  }
+}
+
+// QUEM PEDIU MENOS MOVIMENTO RECEBE MENOS MOVIMENTO. O sistema tem essa
+// preferência e ela existe por um motivo — enxaqueca e vertigem são reais.
+const QUIETO = matchMedia("(prefers-reduced-motion: reduce)");
+
+function aplicarChuva(nome){
+  const c = CHUVA_POR_ESTADO[nome] || CHUVA_POR_ESTADO.parado;
+  const raiz = getComputedStyle(document.documentElement);
+  const cor = (nome === "erro"   ? raiz.getPropertyValue("--erro")
+            :  nome.startsWith("aguardando") ? raiz.getPropertyValue("--alerta")
+            :  raiz.getPropertyValue("--acento")).trim() || "#00FF41";
+  cv.dataset.rastro = c.rastro; cv.dataset.cor = cor;
+  document.documentElement.style.setProperty(
+    "--chuva", chuvaLigada ? (QUIETO.matches ? c.forca * 0.4 : c.forca) : 0);
+  clearInterval(chuvaTimer); chuvaTimer = null;
+  if (chuvaLigada && c.veloc > 0)
+    chuvaTimer = setInterval(pingar, QUIETO.matches ? c.veloc * 2 : c.veloc);
+}
+
+function rajada(depois){
+  clearTimeout(chuvaCauda);
+  cv.hidden = false;
+  const raiz = getComputedStyle(document.documentElement);
+  cv.dataset.rastro = RAJADA.rastro;
+  cv.dataset.cor = raiz.getPropertyValue("--acento").trim() || "#00FF41";
+  document.documentElement.style.setProperty(
+    "--chuva", QUIETO.matches ? RAJADA.forca * 0.35 : RAJADA.forca);
+  clearInterval(chuvaTimer);
+  chuvaTimer = setInterval(pingar, QUIETO.matches ? RAJADA.veloc * 2 : RAJADA.veloc);
+  chuvaCauda = setTimeout(() => {
+    aplicarChuva(estadoChuva);
+    if (typeof depois === "function") depois();
+  }, QUIETO.matches ? 500 : RAJADA_MS);
+}
+
+function chuvaNoEstado(nome){
+  if (nome === estadoChuva) return;
+  const pensava = estadoChuva === "pensando" || estadoChuva === "investigando";
+  estadoChuva = nome;
+  clearTimeout(chuvaCauda); chuvaCauda = null;
+  if (pensava && nome === "parado"){
+    // a cauda: segura o forte e só então volta ao repouso
+    chuvaCauda = setTimeout(() => aplicarChuva("parado"), CAUDA_MS);
+    return;
+  }
+  aplicarChuva(nome);
+}
+
+function alternarChuva(){
+  chuvaLigada = !chuvaLigada;
+  cv.hidden = !chuvaLigada;
+  aplicarChuva(estadoChuva);
+}
+
+// ── o tema ────────────────────────────────────────────────────────────
+//
+// NÃO EXISTE MAIS ESCOLHA DE TEMA, e por isso esta parte quase sumiu. O
+// que ficou é uma faxina obrigatória: quem já usou o programa antes pode
+// ter `devdesk-tema = "fiel"` guardado no navegador. Sem esta linha, o
+// atributo voltaria a ser posto na carga, o CSS do fiel não existe mais,
+// e a pessoa abriria numa tela meio pintada — sem menu nenhum para
+// desfazer, porque o menu também saiu.
+//
+// Tirar a opção sem limpar o que ela deixou para trás é meio conserto.
+try {
+  localStorage.removeItem("devdesk-tema");
+} catch (e) {}
+document.documentElement.removeAttribute("data-tema");
+
+medirChuva();
+aplicarChuva("parado");
+
+
+
+// ══════════════════════════════════════════════════════════════════════
+//  CLARIDADE — cinco níveis, e o contraste não se mexe
+//
+//  Clarear tudo junto seria o erro fácil: o fundo sobe, o texto fica
+//  onde estava, o contraste desaba e o nível "mais claro" vira o mais
+//  difícil de ler. Aqui cada nível traz a sua própria tinta, escolhida
+//  para os cinco darem 10,5:1 — o mesmo lugar do VS Code Dark+.
+//
+// ══════════════════════════════════════════════════════════════════════
+const LUZ_NOMES = {1:"mais escuro", 2:"escuro", 3:"meio", 4:"claro", 5:"mais claro"};
+
+// UM SÓ LUGAR PARA O AVISO NO ALTO. A claridade e a fonte dizem a mesma
+// coisa de jeitos diferentes ("pegou, e agora está assim"), e duas cópias
+// da mesma lógica de emprestar-e-devolver o título saem de sincronia no
+// dia em que a terceira aparecer.
+//
+// `_volta` cheio quer dizer que já estamos DENTRO de uma rajada (Alt+1,
+// Alt+2, Alt+3 seguidos): aí não se guarda o título de novo, senão o
+// segundo aperto guardaria "claridade 1 de 5" como se fosse o nome do
+// projeto, e era isso que voltava no fim.
+function avisarNaBarra(texto){
+  const t = document.getElementById("titulo");
+  if (!t) return;
+  if (avisarNaBarra._volta) clearTimeout(avisarNaBarra._volta);
+  else avisarNaBarra._antes = t.textContent;
+  tituloEmprestado = true;
+  t.textContent = texto;
+  avisarNaBarra._volta = setTimeout(() => {
+    t.textContent = avisarNaBarra._antes;
+    tituloEmprestado = false; avisarNaBarra._volta = null;
+  }, 1400);
+}
+// Na CARGA não se avisa nada: o título ainda vai ser escrito pelo primeiro
+// `atualizar()`, e devolver o que estava lá antes apagaria o nome do projeto.
+let luzPronta = false;
+
+function claridade(n){
+  n = Math.max(1, Math.min(5, n | 0));
+  document.documentElement.dataset.luz = n;
+  // DIZ QUE PEGOU. Sem isto, quem aperta Alt+4 num monitor claro não sabe
+  // se o comando existe — e foi exatamente essa a queixa.
+  //
+  // `_volta` cheio quer dizer que já estamos DENTRO de uma rajada (Alt+1,
+  // Alt+2, Alt+3 seguidos): aí não se guarda o título de novo, senão o
+  // segundo aperto guardaria "claridade 1 de 5" como se fosse o nome do
+  // projeto, e era isso que voltava no fim.
+  if (luzPronta) avisarNaBarra("claridade " + n + " de 5 · " + (LUZ_NOMES[n] || ""));
+  try { localStorage.setItem("devdesk-luz", n); } catch (e) {}
+  if (window.monaco && window.temaDevDesk) temaDevDesk();
+  aplicarChuva(estadoChuva);
+  return n;
+}
+function maisClaro(){ claridade((+document.documentElement.dataset.luz || 3) + 1); }
+function maisEscuro(){ claridade((+document.documentElement.dataset.luz || 3) - 1); }
+
+try {
+  claridade(+localStorage.getItem("devdesk-luz") || 3);
+} catch (e) { claridade(3); }
+luzPronta = true;          // a partir daqui, trocar de nível avisa na barra
+
+try {
+  if (alturaEscolhida) caixaCresce();
+  const f = parseFloat(localStorage.getItem("devdesk-fonte"));
+  if (f) fonte(f);
+} catch (e) {}
+
+addEventListener("keydown", e => {
+  if (e.altKey && e.key >= "1" && e.key <= "5"){ e.preventDefault(); claridade(+e.key); }
+});
+
+// ══════════════════════════════════════════════════════════════════════
+//  A TELA DE ENTRADA
+// ══════════════════════════════════════════════════════════════════════
+const entradaEl = document.getElementById("entrada");
+const senhaEl   = document.getElementById("senha");
+const btEntrar  = document.getElementById("btentrar");
+let primeiraVez = false;
+let lembrado = false;        // há ficha guardada: o ENTRAR dispensa a senha
+
+senhaEl.addEventListener("keydown", e => { if (e.key === "Enter") btEntrar.click(); });
+
+// ── TROCAR O NOME NA PRÓPRIA TELA DE ENTRADA ──────────────────────────
+// O mesmo campo serve às duas situações: na primeira vez ele CRIA o
+// nome junto com a senha; depois, o "trocar" reabre ele só para o nome,
+// e aí a gravação é imediata (POST /api/perfil), sem passar pela senha.
+const campoNome = document.getElementById("nome");
+const trocarEl  = document.getElementById("trocar-nome");
+const quemEl    = document.getElementById("quem");
+const trocando  = () => campoNome.dataset.trocando === "1";
+
+function abrirTroca(){
+  campoNome.value = (quemEl.textContent || "").trim().replace(/^—$/, "");
+  campoNome.dataset.trocando = "1";
+  campoNome.hidden = false; quemEl.hidden = true; trocarEl.hidden = true;
+  campoNome.focus(); campoNome.select();
+}
+function fecharTroca(){
+  campoNome.dataset.trocando = "";
+  campoNome.hidden = true; quemEl.hidden = false; trocarEl.hidden = false;
+}
+async function gravarNomeAqui(){
+  const nome = campoNome.value.trim();
+  const recado = document.getElementById("recado");
+  if (!nome){
+    recado.innerHTML = '<div><span class="er">✕</span> me diga como quer ser chamado</div>';
+    return;
+  }
+  let r = {ok:false};
+  try {
+    r = await (await fetch("/api/perfil", {method:"POST",
+      headers:{"Content-Type":"application/json"},
+      body: JSON.stringify({nome})})).json();
+  } catch (e) { r = {ok:false, porque:"o servidor não respondeu"}; }
+  if (!r.ok){
+    recado.innerHTML = '<div><span class="er">✕</span> ' +
+      esc(r.porque || "não deu para gravar o nome") + '</div>';
+    return;
+  }
+  quemEl.textContent = nome;
+  pintarEu({nome});
+  fecharTroca();
+  recado.innerHTML = '<div><span class="ok">✓</span> nome guardado — ' +
+                     'vai estar aqui na próxima vez</div>';
+  senhaEl.focus();
+}
+trocarEl.onclick = abrirTroca;
+campoNome.addEventListener("keydown", e => {
+  if (e.key === "Enter"){
+    e.preventDefault();
+    if (trocando()) gravarNomeAqui(); else senhaEl.focus();
+  } else if (e.key === "Escape" && trocando()){
+    e.preventDefault(); fecharTroca(); senhaEl.focus();
+  }
+});
+
+async function abrirPorteiro(){
+  let c;
+  try { c = await (await fetch("/api/porteiro")).json(); }
+  catch (e) { return; }                     // sem porteiro, o app abre direto
+
+  // ── LEMBRAR DE MIM ────────────────────────────────────────────────
+  //
+  // POR QUE ISTO NÃO FUNCIONAVA. A ficha ficava guardada nos DOIS lados —
+  // no `dados/perfil.json` e no `localStorage` do navegador — e só pulava
+  // a porta se as duas batessem. Num site isso é o certo: o servidor é de
+  // todo mundo e o navegador é seu.
+  //
+  // Aqui não é um site. É uma janela do WebView2 aberta pelo pywebview na
+  // SUA máquina, e o "navegador" dela pode estar num perfil temporário —
+  // fechou o programa, o `localStorage` foi junto. A ficha do servidor
+  // continuava lá, a do navegador sumia, e ele pedia a senha de novo.
+  // Você marcava "lembrar" e não adiantava nada.
+  //
+  // Agora quem manda é o `perfil.json`. Ele mora na sua pasta, no seu
+  // disco, e é exatamente a mesma coisa que "este computador" quer dizer
+  // num programa que só roda aqui. A metade do navegador não acrescentava
+  // segurança nenhuma — só uma forma de o combinado falhar.
+  //
+  // E A TELA DE ENTRADA CONTINUA APARECENDO — isto foi corrigido depois
+  // de eu ter entendido errado o pedido. "Lembrar" não é pular a porta:
+  // é não ter de digitar. A ficha some com o trabalho, não com a tela.
+  //
+  // O QUE ISSO CUSTA, dito na cara: com a ficha guardada, quem abrir o
+  // programa e clicar em ENTRAR entra, sem saber senha nenhuma. A senha
+  // continua existindo só como hash e volta a ser exigida no dia em que
+  // você desmarcar — a caixa está no Perfil (Ctrl+,).
+  lembrado = !!(c.existe && c.lembrete);
+
+  primeiraVez = !c.existe;
+  document.getElementById("quem").textContent = c.nome || "você";
+  document.getElementById("ultimo").textContent = c.ultimo_acesso || "primeira vez";
+  if (c.foto) porFoto(c.foto);
+  document.getElementById("tit-quadro").textContent =
+    primeiraVez ? "criar a sua entrada" : "identificação";
+  document.getElementById("rotulo-senha").textContent =
+    primeiraVez ? "escolha uma senha" : "senha";
+  btEntrar.textContent = primeiraVez ? "criar" : "entrar";
+  // Na primeira vez o nome é um CAMPO, não um rótulo. O computador sabe o
+  // login do Windows — que aqui era "SAMSUNG", o nome que veio de fábrica
+  // na máquina — e não sabe como você quer ser chamado.
+  // com a ficha guardada, o campo da senha não é obrigatório — e a tela
+  // diz isso, em vez de deixar você olhando para um campo vazio sem saber
+  // se pode clicar
+  const rotulo = document.getElementById("rotulo-senha");
+  if (lembrado){
+    rotulo.textContent = "senha — lembrada neste computador";
+    senhaEl.placeholder = "é só clicar em entrar";
+    document.getElementById("recado").innerHTML =
+      '<div><span class="ok">✓</span> senha lembrada — clique em entrar, ' +
+      'ou digite outra para conferir</div>';
+  }
+  campoNome.hidden = !primeiraVez;
+  campoNome.dataset.trocando = "";
+  quemEl.hidden = primeiraVez;
+  trocarEl.hidden = primeiraVez;          // na primeira vez o campo já está aberto
+  document.getElementById("lembrar-linha").hidden = primeiraVez;
+  document.getElementById("lembrar").checked = lembrado;
+  pintarEu(c);
+  entradaEl.hidden = false;
+  senhaEl.focus();
+}
+
+btEntrar.onclick = async () => {
+  const senha = senhaEl.value;
+  const recado = document.getElementById("recado");
+  // CAMPO VAZIO COM A FICHA GUARDADA É ENTRADA VÁLIDA. Sem isto o botão
+  // não fazia nada e a pessoa ficava olhando para a tela sem saber por
+  // quê — o `return` mudo é a pior resposta que uma tela pode dar.
+  if (!senha && lembrado && !primeiraVez){
+    btEntrar.disabled = true;
+    recado.innerHTML = '<div><span class="av">·</span> entrando pela ficha guardada…</div>';
+    let r;
+    try {
+      r = await (await fetch("/api/entrar-lembrado", {method:"POST",
+        headers:{"Content-Type":"application/json"}, body:"{}"})).json();
+    } catch (e) { r = {ok:false, porque:"o servidor não respondeu"}; }
+    btEntrar.disabled = false;
+    if (r.ok) return entrarNaTela("sem digitar nada — a ficha estava guardada");
+    recado.innerHTML = '<div><span class="er">✕</span> ' +
+      esc(r.porque || "não deu para entrar pela ficha") + '</div>';
+    senhaEl.focus();
+    return;
+  }
+  if (!senha) return;
+  const nome = document.getElementById("nome").value.trim();
+  if (primeiraVez && !nome){
+    recado.innerHTML = '<div><span class="er">✕</span> me diga como quer ser chamado</div>';
+    document.getElementById("nome").focus();
+    return;
+  }
+  btEntrar.disabled = true;
+  recado.innerHTML = '<div><span class="av">·</span> derivando chave · scrypt N=2^15…</div>';
+  const rota = primeiraVez ? "/api/cadastrar" : "/api/entrar";
+  let r;
+  try {
+    r = await (await fetch(rota, {method:"POST",
+      headers:{"Content-Type":"application/json"},
+      body: JSON.stringify({senha, nome})})).json();
+  } catch (e) { r = {ok:false, porque:"o servidor não respondeu"}; }
+  btEntrar.disabled = false;
+  senhaEl.value = "";                       // a senha não fica na tela
+  if (r.ok){
+    // guarda a ficha do "lembrar de mim", se você marcou. A ficha vai
+    // para o perfil no disco — é ela que faz o ENTRAR da próxima vez
+    // funcionar com o campo vazio.
+    try {
+      await fetch(document.getElementById("lembrar").checked
+                  ? "/api/lembrar" : "/api/esquecer",
+                  {method:"POST", headers:{"Content-Type":"application/json"},
+                   body:"{}"});
+    } catch (e) {}
+    entrarNaTela(r.segundos ? r.segundos.toFixed(3) + "s para derivar a chave"
+                            : "entrada criada");
+  } else {
+    recado.innerHTML = '<div><span class="er">✕</span> ' +
+      (r.porque || "senha não confere") + '</div>';
+    senhaEl.focus();
+  }
+};
+
+// A SAÍDA DA TELA DE ENTRADA, num lugar só. São dois caminhos que
+// chegam aqui — a senha conferida e a ficha guardada — e duas cópias da
+// mesma animação saem de sincronia no dia em que a terceira aparecer.
+function entrarNaTela(porque){
+  document.getElementById("recado").innerHTML =
+    '<div><span class="ok">✓</span> ' + esc(porque) + '</div>';
+  rajada();
+  // O painel some por dentro da chuva: primeiro o texto se apaga, e só
+  // depois o elemento sai. Sumir de uma vez cortaria a rajada no meio.
+  entradaEl.classList.add("saindo");
+  setTimeout(() => {
+    entradaEl.hidden = true;
+    entradaEl.classList.remove("saindo");
+    document.getElementById("e").focus();
+  }, 1300);
+}
+
+// ── a foto: lida DENTRO do navegador, guardada no perfil local ────────
+// Duas telas mostram o mesmo retrato (entrada e perfil) e a ficha do
+// alto mostra o mesmo em miniatura. Por isso `.retrato` é CLASSE: trocar
+// a foto num lugar tem de trocar em todos, senão a tela mente.
+function porFoto(uri){
+  document.querySelectorAll(".retrato").forEach(el => {
+    el.innerHTML = '<img alt="sua foto">';
+    el.querySelector("img").src = uri;
+  });
+  const mini = document.querySelector("#eu .r");
+  if (mini) mini.style.setProperty("--retrato-mini", 'url("' + uri + '")');
+}
+function lerFoto(arq){
+  if (!arq || !arq.type.startsWith("image/")) return;
+  const ler = new FileReader();
+  ler.onload = e => {
+    porFoto(e.target.result);
+    fetch("/api/perfil", {method:"POST", headers:{"Content-Type":"application/json"},
+                          body: JSON.stringify({foto: e.target.result})});
+  };
+  ler.readAsDataURL(arq);
+}
+function ligarFoto(el){
+  el.addEventListener("dragover", e => { e.preventDefault(); el.classList.add("sobre"); });
+  el.addEventListener("dragleave", () => el.classList.remove("sobre"));
+  el.addEventListener("drop", e => {
+    e.preventDefault(); el.classList.remove("sobre"); lerFoto(e.dataTransfer.files[0]);
+  });
+  el.addEventListener("click", () => {
+    const i = document.createElement("input");
+    i.type = "file"; i.accept = "image/*";
+    i.onchange = () => lerFoto(i.files[0]); i.click();
+  });
+}
+document.querySelectorAll(".retrato").forEach(ligarFoto);
+
+// Desfaz o "lembrar de mim": apaga a ficha dos dois lados. NÃO mexe na
+// senha — ela continua a mesma; o que sai é a permissão de pular a porta.
+async function esquecerSenha(){
+  // o `localStorage` some junto por higiene: sobra de versão antiga não
+  // faz nada hoje, mas confunde quem for ler isto daqui a um ano
+  try { localStorage.removeItem("devdesk-lembrete"); } catch (e) {}
+  try { await fetch("/api/esquecer", {method:"POST",
+        headers:{"Content-Type":"application/json"}, body:"{}"}); } catch (e) {}
+}
+
+
+// ══════════════════════════════════════════════════════════════════════
+//  PERFIL DO USUÁRIO
+//
+//  O QUE FICA GUARDADO, E ONDE: nome e foto vão para `dados/perfil.json`,
+//  nesta máquina, ao lado do hash da senha. É o MESMO arquivo que a tela
+//  de entrada lê — por isso o nome gravado aqui já aparece lá na próxima
+//  vez que o programa abrir, sem digitar de novo. É isso, e nada além
+//  disso, que "salvar o perfil" quer dizer aqui: um JSON local.
+//
+//  A FOTO NÃO VIRA ARQUIVO SOLTO: entra no mesmo JSON como data: URI,
+//  para o perfil ser UMA coisa que se copia ou se apaga inteira.
+// ══════════════════════════════════════════════════════════════════════
+const perfilEl = document.getElementById("perfil");
+const pnomeEl  = document.getElementById("pnome");
+
+function pintarEu(c){
+  const eu = document.getElementById("eu");
+  if (!eu) return;
+  if (c.nome !== undefined) eu.querySelector(".n").textContent = c.nome || "sem nome";
+  if (c.foto) eu.querySelector(".r").style
+                .setProperty("--retrato-mini", 'url("' + c.foto + '")');
+}
+
+async function abrirPerfil(){
+  let c = {};
+  try { c = await (await fetch("/api/porteiro")).json(); } catch (e) {}
+  pnomeEl.value = c.nome || "";
+  document.getElementById("pultimo").textContent = c.ultimo_acesso || "primeira vez";
+  document.getElementById("plembrar").checked = !!c.lembrete;
+  document.getElementById("precado").textContent = "";
+  if (c.foto) porFoto(c.foto);
+  perfilEl.hidden = false;
+  pnomeEl.focus(); pnomeEl.select();
+}
+function fecharPerfil(){ perfilEl.hidden = true; }
+
+async function gravarPerfil(){
+  const nome = pnomeEl.value.trim();
+  const recado = document.getElementById("precado");
+  if (!nome){
+    recado.innerHTML = '<span class="er">✕</span> me diga como quer ser chamado';
+    pnomeEl.focus(); return;
+  }
+  let r = {ok:false};
+  try {
+    r = await (await fetch("/api/perfil", {method:"POST",
+      headers:{"Content-Type":"application/json"},
+      body: JSON.stringify({nome})})).json();
+  } catch (e) { r = {ok:false, porque:"o servidor não respondeu"}; }
+  if (!r.ok){
+    recado.innerHTML = '<span class="er">✕</span> ' +
+      esc(r.porque || "não deu para gravar"); return;
+  }
+  // a caixa de "lembrar": ligada cria a ficha nos dois lados, desligada
+  // apaga. A senha não é tocada em nenhum dos dois casos.
+  try {
+    if (document.getElementById("plembrar").checked){
+      await fetch("/api/lembrar", {method:"POST",
+        headers:{"Content-Type":"application/json"}, body:"{}"});
+    } else {
+      await esquecerSenha();
+    }
+  } catch (e) {}
+  try { pintarEu(await (await fetch("/api/porteiro")).json()); } catch (e) {}
+  if (!quemEl.hidden) quemEl.textContent = nome;
+  recado.innerHTML = '<span class="ok">✓</span> guardado — está aí na próxima vez que abrir';
+  setTimeout(fecharPerfil, 950);
+}
+
+document.getElementById("eu").onclick      = abrirPerfil;
+document.getElementById("pgravar").onclick = gravarPerfil;
+document.getElementById("pfechar").onclick = fecharPerfil;
+pnomeEl.addEventListener("keydown", e => {
+  if (e.key === "Enter"){ e.preventDefault(); gravarPerfil(); }
+});
+// clicar FORA do cartão fecha; dentro, não
+perfilEl.addEventListener("click", e => { if (e.target === perfilEl) fecharPerfil(); });
+addEventListener("keydown", e => {
+  if (e.ctrlKey && e.key === ","){ e.preventDefault(); abrirPerfil(); }
+  else if (e.key === "Escape" && !perfilEl.hidden){ e.preventDefault(); fecharPerfil(); }
+});
+
+// O ponto verde da ficha. Cinco segundos sem resposta e ele apaga — um
+// ponto que fica verde para sempre não informa nada.
+setInterval(() => {
+  document.getElementById("eu")
+          .classList.toggle("dentro", Date.now() - respondeuEm < 5000);
+}, 1500);
+
+abrirPorteiro();
+
+</script></body></html>

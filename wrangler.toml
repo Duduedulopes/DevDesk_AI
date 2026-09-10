@@ -1,0 +1,15 @@
+name = "devdesk-ai"
+main = "public/index.html"
+compatibility_date = "2024-01-01"
+
+[site]
+bucket = "./public"
+
+# Configuração para Cloudflare Pages
+[build]
+command = "echo 'No build command needed for static site'"
+cwd = "."
+
+# Variáveis de ambiente (se necessário)
+# [vars]
+# ENVIRONMENT = "production"
