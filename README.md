@@ -161,7 +161,7 @@ python visao/mnist/testar_cnn.py
 
 ## 📝 Contribuindo
 
-Contribuições são bem-vindas! Por favor:
+Contribuições são bem-vindas!
 
 
 ## 📄 Licença
