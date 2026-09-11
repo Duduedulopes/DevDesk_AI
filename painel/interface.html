@@ -929,6 +929,16 @@ const coluna = document.getElementById("coluna");
 const ESCOLHAS = document.getElementById("escolhas");
 let visto = 0;
 let revelando = false;
+// Quantos cartões RESOLVIDOS já foram refletidos na tela. Só é preciso
+// redesenhar do zero quando esse número CRESCE; se compararmos contra o
+// `resolvido` que já estava lá, o redraw completo rodaria em cada batida
+// de 1,2s e arrastaria quem está lendo uma mensagem antiga até o fim.
+let resolvidosRefletidos = 0;
+// A assinatura da faixa de correção que está na tela. Se o `atualizar`
+// de 1,2s achar a MESMA dúvida de novo, não reescreve o innerHTML — senão
+// o input de "escreva o que eu devia ter entendido" perdia o texto e o
+// foco no meio da digitação.
+let escolhasAssinatura = "";
 
 // Revela o texto de um elemento caractere a caractere, preservando o HTML
 // que já estava lá (negrito, código, a árvore do projeto). Ele mede o
@@ -1723,20 +1733,26 @@ async function atualizar(){
       `rede: ${r.medido.intencoes} intenções · ${r.medido.corpus.toLocaleString("pt-BR")} frases`;
 
   // Redesenha do zero quando algo foi resolvido, senão só acrescenta.
-  const precisaTudo = r.cartoes.some(c => c.resolvido) && coluna.children.length;
+  // O gatilho é o número de RESOLVIDOS CRESCER — não "existe algum
+  // resolvido?". Um cartão confirmado fica resolvido para sempre, e se a
+  // comparação fosse contra o histórico, o redraw completo rodaria em
+  // CADA batida de 1,2s e arastaria quem lê uma mensagem antiga ao fim.
+  const resolvidos = r.cartoes.reduce((n, c) => n + (c.resolvido ? 1 : 0), 0);
+  const precisaTudo = resolvidos > resolvidosRefletidos && coluna.children.length;
+  // Mede EMBaIXO ANTES de tocar no DOM. Se medíssemos depois de limpar a
+  // coluna, o scrollHeight já teria encolhido e a conta "só rola quem
+  // estava embaixo" viraria "todo mundo está embaixo" — puxando quem
+  // relia uma mensagem antiga até o fim da conversa.
+  const embarco = fluxo.scrollHeight - fluxo.scrollTop - fluxo.clientHeight < 40;
   // Os provisórios saem SEMPRE antes de desenhar. Se um `atualizar` de
   // 1,2s chegar no meio do pensamento, ele levaria os cartões de verdade
   // para depois dos provisórios e a conversa sairia fora de ordem.
   coluna.querySelectorAll(".provisorio").forEach(e => e.remove());
   if (precisaTudo){ coluna.innerHTML = ""; visto = 0; }
-  // Mesma regra do terminal: mede EMBaIXO ANTES de desenhar. Depois de
-  // dar append, o scrollHeight ja cresceu e a conta "so vou rolar se nao
-  // mudou" viraria "acabou de crescer, nao rolo" — exatamente o contrario
-  // do que quem esta no fim espera.
-  const embarco = fluxo.scrollHeight - fluxo.scrollTop - fluxo.clientHeight < 40;
   const novos = r.cartoes.slice(visto);
   for (const c of novos) desenhar(c);
   if (r.cartoes.length > visto){ visto = r.cartoes.length; if (embarco) fluxo.scrollTop = fluxo.scrollHeight; }
+  resolvidosRefletidos = resolvidos;
   // A ÚLTIMA FALA DELA APARECE LETRA A LETRA. Só a última, e só quando
   // veio de uma pergunta sua — recarregar a conversa não fica datilografando
   // tudo de novo, que seria irritante em vez de bonito.
@@ -1761,6 +1777,14 @@ function pintarEscolhas(cartoes){
     escolhasFecha();
     return;
   }
+  // A MESMA DÚVIDA NÃO REPINTA A FAIXA. O `atualizar` roda a cada 1,2s e,
+  // se ele sempre reescrevesse o innerHTML, o input "escreva o que eu
+  // devia ter entendido" perdia o texto e o foco a toda batida — você não
+  // tinha tempo de digitar uma palavra e aprender nada. Assina por frase +
+  // lista de candidatos: mudou a dúvida, mexe; continuou a mesma, deixa.
+  const assinatura = `${cerebro.frase}|${cerebro.candidatos.map(x => x.nome).join(",")}`;
+  if (assinatura === escolhasAssinatura) return;
+  escolhasAssinatura = assinatura;
   ESCOLHAS.innerHTML =
     `<span class="dica">Errei? Clique na intenção certa, ou me diga a sua pergunta de outro jeito.</span>` +
     cerebro.candidatos.map(x =>
@@ -1773,7 +1797,7 @@ function pintarEscolhas(cartoes){
      </span>`;
   ESCOLHAS.hidden = false;
 }
-function escolhasFecha(){ ESCOLHAS.hidden = true; ESCOLHAS.innerHTML = ""; }
+function escolhasFecha(){ escolhasAssinatura = ""; ESCOLHAS.hidden = true; ESCOLHAS.innerHTML = ""; }
 
 // A RESPOSTA DIGITADA NA FAIXA DE CORREÇÃO. Não é clique numa intenção
 // pronta — é a pessoa dizendo com as próprias palavras o que ela quis.
@@ -1808,6 +1832,16 @@ ESCOLHAS.addEventListener("click", ev => {
   const el = ev.target.closest(".escolha[data-intencao]");
   if (!el || el.classList.contains("feita")) return;
   ensinar(el.dataset.frase || "", el.dataset.intencao, el.dataset.palpite || "");
+});
+// Enter no INPUT da faixa de correção ensina — não manda a frase como uma
+// pergunta nova. O input mora dentro do <form id="f">, e sem esta captura
+// o Enter recarregava a página pela submissão do formulário.
+ESCOLHAS.addEventListener("keydown", ev => {
+  if (ev.target && ev.target.id === "escolha-escrita" && ev.key === "Enter"){
+    ev.preventDefault();
+    ev.stopPropagation();
+    ensinarEscrito();
+  }
 });
 async function noVsCode(caminho){
   await fetch("/api/vscode", {method:"POST", headers:{"Content-Type":"application/json"},

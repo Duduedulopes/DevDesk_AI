@@ -1,412 +1,443 @@
 <!DOCTYPE html>
 <html lang="pt-BR">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>DevDesk AI - Assistente de Suporte Técnico Inteligente</title>
-    <meta name="description" content="Assistente de suporte técnico e desenvolvimento com rede neural própria, rodando localmente. Privacidade total, sem nuvem.">
-    <style>
-        * {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
-        }
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>DevDesk AI — o assistente de suporte que aprende na sua máquina</title>
+<meta name="description" content="Assistente de suporte técnico e desenvolvimento com rede neural própria, escrita do zero em NumPy. Entende prints, áudio, vídeo e texto — e roda inteiro na sua máquina.">
+<style>
+  :root{
+    --fundo:#0D120E; --painel:#141A15; --painel-alto:#1A221B;
+    --tinta:#B8C6B8; --tinta-forte:#DCE8DC; --tinta2:#96A796; --tinta3:#7A8B7A;
+    --acento:#00FF41; --ok:#4ADE80; --alerta:#FFB000; --erro:#FF6B6B;
+    --tinta-cod:#9ECBBF; --borda:#2A3A2C; --borda2:#1A221B;
+    --sans:"Segoe UI",system-ui,-apple-system,sans-serif;
+    --mono:"Cascadia Code",Consolas,"SF Mono",Menlo,monospace;
+  }
+  *{margin:0;padding:0;box-sizing:border-box}
+  html{scroll-behavior:smooth}
+  body{background:var(--fundo);color:var(--tinta);font:16px/1.65 var(--sans);
+       -webkit-font-smoothing:antialiased;overflow-x:hidden}
+  b{color:var(--tinta-forte);font-weight:600}
+  #chuva{position:fixed;inset:0;z-index:0;pointer-events:none;opacity:.5}
+  .gaveta{position:relative;z-index:1}
 
-        body {
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            min-height: 100vh;
-            color: #333;
-        }
+  header{position:sticky;top:0;z-index:100;background:rgba(13,18,14,.92);
+         backdrop-filter:blur(8px);border-bottom:1px solid var(--borda)}
+  .gaveta{max-width:1080px;margin:0 auto;padding:0 24px;display:flex;align-items:center;
+          gap:8px;height:56px}
+  .logo{font:600 17px var(--mono);color:var(--tinta-forte);letter-spacing:.02em;
+        text-decoration:none;display:flex;align-items:center;gap:10px;white-space:nowrap}
+  .logo .ic{color:var(--acento)}
+  .logo .aro{color:var(--tinta3)}
+  nav{margin-left:auto;display:flex;gap:4px;flex-wrap:wrap}
+  nav a{font:13px var(--sans);color:var(--tinta2);text-decoration:none;padding:6px 11px;
+        border-radius:5px;transition:.15s}
+  nav a:hover{color:var(--tinta);background:var(--borda2)}
+  @media(max-width:820px){nav a{display:none}}
 
-        .container {
-            max-width: 1200px;
-            margin: 0 auto;
-            padding: 0 20px;
-        }
+  .hero{border-bottom:1px solid var(--borda);position:relative;overflow:hidden}
+  .hero::after{content:"";position:absolute;inset:0;pointer-events:none;
+    background:radial-gradient(60% 55% at 50% 0%,rgba(0,255,65,.07),transparent 70%)}
+  .hero .in{max-width:1080px;margin:0 auto;padding:88px 24px 72px;text-align:center}
+  .badge{display:inline-flex;align-items:center;gap:8px;font:12px var(--mono);
+    color:var(--ok);border:1px solid var(--borda);border-radius:999px;
+    padding:5px 14px;margin-bottom:28px;letter-spacing:.06em}
+  .logo-hero{width:min(300px,52vw);margin:0 auto 14px;display:block;
+    filter:drop-shadow(0 6px 24px rgba(0,255,65,.18))}
+  .banner-hero{color:var(--acento);font-family:var(--mono);
+    font-size:clamp(9px,1.15vw,15px);line-height:1.14;white-space:pre;
+    text-align:center;overflow:hidden;margin:0 auto 10px;width:max-content;max-width:100%}
+  .banner-hero small{color:var(--tinta3);font-size:11px;letter-spacing:.26em;
+    text-transform:uppercase;display:block;text-align:center;margin-top:14px}
+  .badge .ponto{width:7px;height:7px;border-radius:50%;background:var(--ok);
+    box-shadow:0 0 8px var(--ok);animation:pulse 2s infinite}
+  @keyframes pulse{50%{opacity:.35}}
+  .hero h1{font-size:clamp(34px,5.4vw,58px);line-height:1.12;font-weight:700;
+    color:var(--tinta-forte);letter-spacing:-.015em;margin-bottom:18px}
+  .hero h1 .acento{color:var(--acento)}
+  .hero p.sub{max-width:640px;margin:0 auto 34px;font-size:clamp(16px,2.2vw,19px);
+    color:var(--tinta2)}
+  .cta{display:inline-flex;gap:10px;align-items:center;background:var(--acento);
+    color:var(--fundo);font:600 15px var(--mono);text-decoration:none;
+    padding:13px 26px;border-radius:8px;transition:.18s}
+  .cta:hover{transform:translateY(-2px);box-shadow:0 8px 30px rgba(0,255,65,.25)}
+  .cta.ghost{background:transparent;color:var(--tinta);border:1px solid var(--borda)}
+  .cta.ghost:hover{border-color:var(--acento);color:var(--acento);box-shadow:none}
+  .hero .roda{position:absolute;bottom:18px;left:0;right:0;text-align:center;
+    font:12px var(--mono);color:var(--tinta3)}
 
-        header {
-            background: rgba(255, 255, 255, 0.95);
-            padding: 20px 0;
-            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
-            position: sticky;
-            top: 0;
-            z-index: 100;
-        }
+  section{max-width:1080px;margin:0 auto;padding:88px 24px;position:relative;z-index:1}
+  section.tern{max-width:none;border-top:1px solid var(--borda);border-bottom:1px solid var(--borda)}
+  .hero{position:relative;z-index:1}
 
-        nav {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-        }
+  .kicker{font:700 12px var(--mono);color:var(--acento);letter-spacing:.16em;
+    text-transform:uppercase;margin-bottom:14px}
+  h2{font-size:clamp(26px,3.6vw,38px);color:var(--tinta-forte);font-weight:700;
+    letter-spacing:-.015em;line-height:1.15;margin-bottom:16px}
+  .lead{max-width:680px;color:var(--tinta2);font-size:17px;margin-bottom:44px}
+  .lead b{color:var(--tinta-forte)}
 
-        .logo {
-            font-size: 24px;
-            font-weight: bold;
-            color: #667eea;
-            display: flex;
-            align-items: center;
-            gap: 10px;
-        }
+  /* tese */
+  .teses{display:grid;grid-template-columns:repeat(auto-fit,minmax(300px,1fr));gap:18px}
+  .tese{background:var(--painel);border:1px solid var(--borda);border-radius:10px;
+    padding:24px}
+  .tese .n{font:700 13px var(--mono);color:var(--acento);margin-bottom:8px}
+  .tese h3{font:600 18px var(--sans);color:var(--tinta-forte);margin-bottom:8px}
+  .tese p{font-size:14.5px;color:var(--tinta2)}
 
-        .logo span {
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            -webkit-background-clip: text;
-            -webkit-text-fill-color: transparent;
-        }
+  .tec{display:grid;grid-template-columns:repeat(auto-fit,minmax(340px,1fr));
+    gap:18px;margin-top:44px}
+  .tecficha{background:var(--painel);border:1px solid var(--borda);border-radius:10px;
+    overflow:hidden}
+  .tecficha .cab{padding:16px 20px 0}
+  .tecficha .cab .n{font:700 12px var(--mono);color:var(--acento);letter-spacing:.14em;
+    text-transform:uppercase;margin-bottom:6px}
+  .tecficha .cab h3{font:600 18px var(--sans);color:var(--tinta-forte);margin-bottom:6px}
+  .tecficha .cab p{font-size:14px;color:var(--tinta2)}
+  .tecficha .formula{background:var(--fundo);border-top:1px solid var(--borda);
+    border-bottom:1px solid var(--borda);padding:18px 20px;margin-top:14px;
+    font:13.5px/1.7 var(--mono);color:var(--tinta-cod);overflow-x:auto}
+  .tecficha .formula b{color:var(--acento)}
+  .tecficha .formula .cm{color:var(--tinta3)}
+  .tecficha .roda{font-size:13.5px;color:var(--tinta2);padding:14px 20px 18px}
+  .tecficha .roda b{color:var(--tinta-forte)}
+  .cita{border-left:2px solid var(--acento);padding:18px 22px;margin-top:40px;
+    background:var(--borda2);border-radius:0 10px 10px 0}
+  .cita p{font:600 20px var(--mono);color:var(--tinta-forte);line-height:1.5}
+  .cita .quem{margin-top:10px;font:13px var(--mono);color:var(--tinta3)}
 
-        .nav-links {
-            display: flex;
-            gap: 30px;
-        }
+  /* camadas */
+  .pilha{display:flex;flex-direction:column;gap:0;margin:0 auto;max-width:680px}
+  .degrau{display:flex;gap:16px;align-items:flex-start;background:var(--painel);
+    border:1px solid var(--borda);border-bottom:none;padding:16px 18px}
+  .degrau:first-child{border-radius:10px 10px 0 0}
+  .degrau:last-child{border-radius:0 0 10px 10px;border-bottom:1px solid var(--borda)}
+  .degrau .num{font:700 15px var(--mono);color:var(--acento);flex:none;width:22px}
+  .degrau .t{font:600 15px var(--sans);color:var(--tinta-forte)}
+  .degrau .d{font:13.5px var(--sans);color:var(--tinta2);margin-top:2px}
 
-        .nav-links a {
-            text-decoration: none;
-            color: #333;
-            font-weight: 500;
-            transition: color 0.3s;
-        }
+  table{width:100%;border-collapse:collapse;margin-bottom:40px;font-size:14.5px}
+  th{text-align:left;font:700 12px var(--mono);color:var(--tinta3);letter-spacing:.12em;
+    text-transform:uppercase;padding:10px 14px;border-bottom:1px solid var(--borda)}
+  td{padding:14px;color:var(--tinta2);border-bottom:1px solid var(--borda2);vertical-align:top}
+  td b{color:var(--tinta)}
+  td .lv{font:700 14px var(--mono);color:var(--acento)}
+  tr:hover td{background:var(--borda2)}
 
-        .nav-links a:hover {
-            color: #667eea;
-        }
+  /* numeros */
+  .numeros{display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:16px}
+  .numero{background:var(--painel);border:1px solid var(--borda);border-radius:10px;
+    padding:22px;text-align:center}
+  .numero .v{font:700 clamp(26px,3vw,34px) var(--mono);color:var(--acento)}
+  .numero:nth-child(2n) .v{color:var(--ok)}
+  .numero .r{font:12px var(--mono);color:var(--tinta3);text-transform:uppercase;
+    letter-spacing:.08em;margin-top:6px}
 
-        .hero {
-            padding: 100px 0;
-            text-align: center;
-            color: white;
-        }
+  /* estado */
+  .lado{display:grid;grid-template-columns:1fr 1fr;gap:18px}
+  @media(max-width:820px){.lado{grid-template-columns:1fr}}
+  .bloco{background:var(--painel);border:1px solid var(--borda);border-radius:10px;padding:24px}
+  .bloco h3{font:600 17px var(--sans);color:var(--tinta-forte);margin-bottom:12px}
+  .bloco ul{list-style:none}
+  .bloco li{padding:7px 0 7px 26px;position:relative;font-size:14.5px;color:var(--tinta2)}
+  .bloco li::before{content:"✓";position:absolute;left:0;color:var(--ok);font:700 13px var(--mono)}
+  .bloco.nao li::before{content:"⏳";color:var(--alerta)}
 
-        .hero h1 {
-            font-size: 48px;
-            margin-bottom: 20px;
-            text-shadow: 2px 2px 4px rgba(0,0,0,0.2);
-        }
+  /* monaco-ish linha de codigo decorativa */
+  .codigo{border:1px solid var(--borda);border-radius:10px;overflow:hidden;margin-top:40px}
+  .codigo .tira{display:flex;gap:7px;background:var(--painel-alto);padding:10px 14px;
+    border-bottom:1px solid var(--borda)}
+  .codigo .tira i{width:11px;height:11px;border-radius:50%;display:block;
+    background:var(--borda)}
+  .codigo .tira i:nth-child(1){background:var(--erro)}
+  .codigo .tira i:nth-child(2){background:var(--alerta)}
+  .codigo .tira i:nth-child(3){background:var(--ok)}
+  .codigo pre{margin:0;padding:18px 20px;font:13px/1.8 var(--mono);color:var(--tinta-cod);overflow-x:auto}
+  .codigo .cm{color:var(--tinta3)}
+  .codigo .kw{color:var(--acento)}
 
-        .hero p {
-            font-size: 20px;
-            margin-bottom: 40px;
-            opacity: 0.9;
-        }
+  /* capturas reais do painel */
+  .galeria{display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-top:24px;
+    align-items:start}
+  .galeria figure{margin:0;border:1px solid var(--borda);border-radius:10px;
+    overflow:hidden;background:var(--painel)}
+  .galeria img{display:block;width:100%;height:auto;background:#000}
+  .galeria figure:last-child:nth-child(odd){grid-column:1 / -1;max-width:640px;
+    margin-left:auto;margin-right:auto}
+  .galeria .galeria-titulo{grid-column:1 / -1;font:600 15px var(--sans);
+    color:var(--tinta-forte);margin:0 0 2px}
 
-        .cta-button {
-            display: inline-block;
-            background: white;
-            color: #667eea;
-            padding: 15px 40px;
-            border-radius: 50px;
-            text-decoration: none;
-            font-weight: bold;
-            font-size: 18px;
-            transition: transform 0.3s, box-shadow 0.3s;
-            box-shadow: 0 4px 15px rgba(0,0,0,0.2);
-        }
+  .cta-final{max-width:none;border-top:1px solid var(--borda);text-align:center;
+    border-bottom:1px solid var(--borda)}
+  .cta-final p{color:var(--tinta2);margin:0 auto 26px;max-width:480px}
+  .cta-final .cta{font-size:16px;padding:15px 30px}
 
-        .cta-button:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 6px 20px rgba(0,0,0,0.3);
-        }
+  footer{border-top:1px solid var(--borda);background:var(--painel)}
+  .roda{max-width:1080px;margin:0 auto;padding:56px 24px 44px;text-align:center}
+  .roda .logo{justify-content:center;margin-bottom:14px;font-size:15px}
+  .roda p{font-size:14px;color:var(--tinta2);max-width:520px;margin:0 auto}
+  .limks{display:flex;justify-content:center;gap:10px;margin-top:22px;flex-wrap:wrap}
+  .limks a{font:14px var(--mono);color:var(--tinta);text-decoration:none;
+    border:1px solid var(--borda);padding:9px 18px;border-radius:6px;transition:.15s}
+  .limks a:hover{border-color:var(--acento);color:var(--acento)}
 
-        .features {
-            padding: 80px 0;
-            background: white;
-        }
-
-        .features h2 {
-            text-align: center;
-            font-size: 36px;
-            margin-bottom: 60px;
-            color: #333;
-        }
-
-        .features-grid {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
-            gap: 30px;
-        }
-
-        .feature-card {
-            background: #f8f9fa;
-            padding: 30px;
-            border-radius: 10px;
-            text-align: center;
-            transition: transform 0.3s;
-        }
-
-        .feature-card:hover {
-            transform: translateY(-5px);
-        }
-
-        .feature-icon {
-            font-size: 48px;
-            margin-bottom: 20px;
-        }
-
-        .feature-card h3 {
-            font-size: 20px;
-            margin-bottom: 15px;
-            color: #667eea;
-        }
-
-        .feature-card p {
-            color: #666;
-            line-height: 1.6;
-        }
-
-        .how-it-works {
-            padding: 80px 0;
-            background: #f8f9fa;
-        }
-
-        .how-it-works h2 {
-            text-align: center;
-            font-size: 36px;
-            margin-bottom: 60px;
-            color: #333;
-        }
-
-        .steps {
-            display: flex;
-            justify-content: space-around;
-            flex-wrap: wrap;
-            gap: 30px;
-        }
-
-        .step {
-            flex: 1;
-            min-width: 250px;
-            text-align: center;
-            padding: 20px;
-        }
-
-        .step-number {
-            width: 60px;
-            height: 60px;
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            color: white;
-            border-radius: 50%;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            font-size: 24px;
-            font-weight: bold;
-            margin: 0 auto 20px;
-        }
-
-        .step h3 {
-            font-size: 18px;
-            margin-bottom: 10px;
-            color: #333;
-        }
-
-        .step p {
-            color: #666;
-            line-height: 1.6;
-        }
-
-        .demo {
-            padding: 80px 0;
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            color: white;
-            text-align: center;
-        }
-
-        .demo h2 {
-            font-size: 36px;
-            margin-bottom: 20px;
-        }
-
-        .demo p {
-            font-size: 18px;
-            margin-bottom: 40px;
-            opacity: 0.9;
-        }
-
-        .demo-button {
-            display: inline-block;
-            background: white;
-            color: #667eea;
-            padding: 15px 40px;
-            border-radius: 50px;
-            text-decoration: none;
-            font-weight: bold;
-            font-size: 18px;
-            transition: transform 0.3s, box-shadow 0.3s;
-            box-shadow: 0 4px 15px rgba(0,0,0,0.2);
-        }
-
-        .demo-button:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 6px 20px rgba(0,0,0,0.3);
-        }
-
-        footer {
-            background: #333;
-            color: white;
-            padding: 40px 0;
-            text-align: center;
-        }
-
-        .footer-links {
-            display: flex;
-            justify-content: center;
-            gap: 30px;
-            margin-bottom: 20px;
-        }
-
-        .footer-links a {
-            color: white;
-            text-decoration: none;
-            transition: opacity 0.3s;
-        }
-
-        .footer-links a:hover {
-            opacity: 0.8;
-        }
-
-        .copyright {
-            opacity: 0.7;
-            font-size: 14px;
-        }
-
-        @media (max-width: 768px) {
-            .hero h1 {
-                font-size: 36px;
-            }
-
-            .nav-links {
-                display: none;
-            }
-
-            .steps {
-                flex-direction: column;
-            }
-        }
-    </style>
+  @media(max-width:640px){
+    section{padding:60px 18px}
+    .hero .in{padding:64px 18px 56px}
+    .numeros{grid-template-columns:1fr 1fr}
+    .galeria{grid-template-columns:1fr}
+    .galeria figure:last-child:nth-child(odd){max-width:none}
+  }
+</style>
 </head>
 <body>
-    <header>
-        <div class="container">
-            <nav>
-                <div class="logo">
-                    🤖 <span>DevDesk AI</span>
-                </div>
-                <div class="nav-links">
-                    <a href="#features">Funcionalidades</a>
-                    <a href="#how-it-works">Como Funciona</a>
-                    <a href="#demo">Demo</a>
-                    <a href="https://github.com/Duduedulopes/DevDesk_AI">GitHub</a>
-                </div>
-            </nav>
-        </div>
-    </header>
 
-    <section class="hero">
-        <div class="container">
-            <h1>Assistente de Suporte Técnico Inteligente</h1>
-            <p>Rede neural própria, rodando localmente. Privacidade total, sem nuvem, sem API de terceiros.</p>
-            <a href="https://github.com/Duduedulopes/DevDesk_AI" class="cta-button">Começar Agora</a>
-        </div>
-    </section>
+<canvas id="chuva"></canvas>
 
-    <section class="features" id="features">
-        <div class="container">
-            <h2>Funcionalidades Principais</h2>
-            <div class="features-grid">
-                <div class="feature-card">
-                    <div class="feature-icon">🧠</div>
-                    <h3>Rede Neural Própria</h3>
-                    <p>CNN e redes densas escritas do zero com NumPy. Total transparência e controle.</p>
-                </div>
-                <div class="feature-card">
-                    <div class="feature-icon">👁️</div>
-                    <h3>Percepção Multimodal</h3>
-                    <p>Texto, imagens (prints), áudio e vídeo. Entende problemas como eles aparecem na vida real.</p>
-                </div>
-                <div class="feature-card">
-                    <div class="feature-icon">🔍</div>
-                    <h3>Investigação Inteligente</h3>
-                    <p>Coleta evidências do sistema de forma segura, sem alterações não autorizadas.</p>
-                </div>
-                <div class="feature-card">
-                    <div class="feature-icon">⚡</div>
-                    <h3>Ação Controlada</h3>
-                    <p>Executa comandos com confirmação explícita, registro completo e capacidade de desfazer.</p>
-                </div>
-                <div class="feature-card">
-                    <div class="feature-icon">📚</div>
-                    <h3>Aprendizado Contínuo</h3>
-                    <p>Cada caso resolvido vira exemplo para melhorias futuras. O sistema evolui com você.</p>
-                </div>
-                <div class="feature-card">
-                    <div class="feature-icon">🔒</div>
-                    <h3>Privacidade Total</h3>
-                    <p>Tudo roda localmente. Seus dados nunca saem da máquina. Sem nuvem, sem chaves de API.</p>
-                </div>
-            </div>
-        </div>
-    </section>
+<header>
+  <div class="gaveta">
+    <a class="logo" href="#topo"><span class="ic">▮</span>DevDesk<span class="aro">_AI</span></a>
+    <nav>
+      <a href="#tese">Tese</a>
+      <a href="#camadas">Camadas</a>
+      <a href="#cerebro">Rede</a>
+      <a href="#estado">Estado</a>
+      <a href="#painel">Painel</a>
+      <a href="https://github.com/Duduedulopes/DevDesk_AI">GitHub</a>
+    </nav>
+  </div>
+</header>
 
-    <section class="how-it-works" id="how-it-works">
-        <div class="container">
-            <h2>Como Funciona</h2>
-            <div class="steps">
-                <div class="step">
-                    <div class="step-number">1</div>
-                    <h3>Percepção</h3>
-                    <p>Recebe o problema como ele chega: print, áudio, vídeo ou texto.</p>
-                </div>
-                <div class="step">
-                    <div class="step-number">2</div>
-                    <h3>Entendimento</h3>
-                    <p>Classifica o problema e aplica procedimentos conhecidos (N1).</p>
-                </div>
-                <div class="step">
-                    <div class="step-number">3</div>
-                    <h3>Investigação</h3>
-                    <p>Se necessário, coleta evidências do sistema para correlacionar (N2).</p>
-                </div>
-                <div class="step">
-                    <div class="step-number">4</div>
-                    <h3>Ação</h3>
-                    <p>Propõe soluções com confirmação e capacidade de desfazer (N3).</p>
-                </div>
-            </div>
-        </div>
-    </section>
+<div class="hero" id="topo">
+  <div class="in">
+    <img class="logo-hero" src="logo.png" alt="Logo DevDesk AI">
+    <pre class="banner-hero">████▄ █████ █   █    ████▄ █████  ████ █   █    █████  ███
+█   █ █     █   █    █   █ █     █     █  █       █   █   █
+█   █ ████  █   █    █   █ ████   ███  ███        █   █████
+█   █ █      █ █     █   █ █         █ █  █       █   █   █
+████▀ █████   █      ████▀ █████ ████  █   █    █████ █   █</pre>
+    <small>inteligência artificial nativa</small>
+    <span class="badge"><span class="ponto"></span>Roda 100% na sua máquina · sem nuvem · sem chave</span>
+    <h1>Do chamado à linha de código: <span class="acento">o seu assistente para programar soluções</span></h1>
+  </div>
+</div>
 
-    <section class="demo" id="demo">
-        <div class="container">
-            <h2>Veja em Ação</h2>
-            <p>Experimente a interface web local com tema retrô de terminal anos 90</p>
-            <a href="http://localhost:8760" class="demo-button">Abrir Demo Local</a>
-        </div>
-    </section>
+<section id="tese">
+  <div class="kicker">A tese</div>
+  <div class="tec">
+    <div class="tecficha">
+      <div class="cab">
+        <div class="n">O Motor</div>
+        <h3>Rede neural escrita do zero, em NumPy</h3>
+        <p>Nenhum framework de IA, nenhum modelo baixado da internet. Camada, ativação, custo e retropropagação são código próprio — cabem no projeto e são auditáveis.</p>
+      </div>
+      <div class="formula">
+        <span class="cm"># o aprendizado: derivar o erro e espalhar</span><br>
+        camada → <b>sigmoid</b> / <b>softmax</b> → custo<br>
+        gradiente = <span class="cm">retropropagação</span><br>
+        <b>conferir_numericamente</b>(rede, x, y)<br>
+        <span class="cm"># o gradiente é conferido contra a derivada numérica</span>
+      </div>
+      <div class="roda">O gradiente calculado é <b>verificado a cada mudança</b> contra a derivada numérica — se a prova reprovar, a rede não anda. É o método do projeto: nada confiado, tudo medido.</div>
+    </div>
 
-    <footer>
-        <div class="container">
-            <div class="footer-links">
-                <a href="https://github.com/Duduedulopes/DevDesk_AI">GitHub</a>
-                <a href="https://github.com/Duduedulopes/DevDesk_AI/issues">Issues</a>
-                <a href="https://github.com/Duduedulopes/DevDesk_AI/blob/main/README.md">Documentação</a>
-            </div>
-            <p class="copyright">© 2026 DevDesk AI. Desenvolvido por Eduardo Lopes.</p>
-        </div>
-    </footer>
+    <div class="tecficha">
+      <div class="cab">
+        <div class="n">O Custo</div>
+        <h3>Entropia cruzada categórica</h3>
+        <p>A par obrigatória da softmax. Ela mede o quanto as probabilidades da rede distam da resposta certa — e a penalidade por errar <em>com certeza absoluta</em> é alta.</p>
+      </div>
+      <div class="formula">
+        <b>C</b> = −Σ y<sub>i</sub> · ln(a<sub>i</sub>)<br>
+        a = 0,99 → C = 0,01 <span class="cm"># quase nenhum custo</span><br>
+        a = 0,50 → C = 0,69<br>
+        a = 0,01 → C = 4,61 <span class="cm"># caro</span><br>
+        a → 0    → C → ∞ <span class="cm"># nunca dar prob. zero</span>
+      </div>
+      <div class="roda">Errar com certeza absoluta custa infinito — por isso a rede <b>nunca aprende a dar probabilidade zero</b>. Com a softmax na saída, o custo vira o log da probabilidade que a rede deu para a classe certa.</div>
+    </div>
 
-    <script>
-        // Smooth scroll para links internos
-        document.querySelectorAll('a[href^="#"]').forEach(anchor => {
-            anchor.addEventListener('click', function (e) {
-                e.preventDefault();
-                const target = document.querySelector(this.getAttribute('href'));
-                if (target) {
-                    target.scrollIntoView({
-                        behavior: 'smooth'
-                    });
-                }
-            });
-        });
-    </script>
+    <div class="tecficha">
+      <div class="cab">
+        <div class="n">O Texto</div>
+        <h3>Trigramas + contexto</h3>
+        <p>Frase torta ou com erro de digitação ainda alcança a intenção certa. O texto vira peças de letras e o significado emerge de uma janela de contexto.</p>
+      </div>
+      <div class="formula">
+        <span class="cm">normalizar → trigramas → peças</span><br>
+        <b>"faturmento" → fat · atu · tur · urm · rme …</b><br>
+        <span class="cm"># ainda alcança "faturamento"</span><br>
+        <b>ctx 4 · ctx 8 · ctx 12 · ctx 16</b> → pesagens
+      </div>
+      <div class="roda">A robustez ao erro veio de <b>trigramas de letras</b>, não de palavras exatas. Os modelos <b>linguagem_ctx*</b> variam a janela de contexto, e cada um é medido antes de entrar.</div>
+    </div>
+
+    <div class="tecficha">
+      <div class="cab">
+        <div class="n">A Confiança</div>
+        <h3>Limiar de 0,90 — responda, e mostre os palpites</h3>
+        <p>Abaixo do limiar o assistente <b>não se cala</b>: responde com o melhor palpite, avisando a dúvida. E ainda mostra os três candidatos — o clique corrige e vira exemplo rotulado.</p>
+      </div>
+      <div class="formula">
+        confiança &lt; <b>0,90</b> → responde mesmo assim<br>
+        &nbsp;&nbsp;+ avisa: <span class="cm">"te respondendo com X% de certeza"</span><br>
+        &nbsp;&nbsp;+ mostra <b>3 palpites</b> → você escolhe<br>
+        &nbsp;&nbsp;escolha vira <b>exemplo rotulado</b><br>
+        <span class="cm"># a dúvida vira aviso, não silêncio</span>
+      </div>
+      <div class="roda">No domínio de suporte: <b>55 intenções</b>, <b>25.249 frases</b>, acerto de <b>67,7%</b> em validação cruzada e a memória preservada num conjunto de guarda de <b>799/800</b>.</div>
+    </div>
+  </div>
+
+  <div class="cita">
+    <p>Toda camada pode se abster, e abster-se escala o nível.</p>
+    <div class="quem">— a regra que segura o sistema de pé</div>
+  </div>
+</section>
+
+<section id="camadas">
+  <div class="kicker">Como funciona</div>
+  <h2>Sete camadas, uma única jornada</h2>
+  <p class="lead">Do problema que chega — em qualquer formato — até a solução com caminho de volta. Cada etapa pode se abortar e passar a vez para a próxima.</p>
+
+  <div class="pilha">
+    <div class="degrau"><span class="num">1</span><div><div class="t">Percepção</div><div class="d">texto · print · áudio · vídeo — tudo vira texto + vetor. CNN do zero · FFT</div></div></div>
+    <div class="degrau"><span class="num">2</span><div><div class="t">Entendimento</div><div class="d">classificador: qual é o problema?</div></div></div>
+    <div class="degrau"><span class="num">3</span><div><div class="t">Conhecimento</div><div class="d">base de casos: já vimos isso antes?</div></div></div>
+    <div class="degrau"><span class="num">4</span><div><div class="t">Investigação</div><div class="d">colher evidência — PowerShell, arquivos, logs, projeto (só leitura)</div></div></div>
+    <div class="degrau"><span class="num">5</span><div><div class="t">Ação</div><div class="d">risco declarado · confirmação · registro · desfazer</div></div></div>
+    <div class="degrau"><span class="num">6</span><div><div class="t">Aprendizado</div><div class="d">cada chamado fechado vira exemplo rotulado — trava contra esquecimento</div></div></div>
+    <div class="degrau"><span class="num">7</span><div><div class="t">Painel</div><div class="d">a pasta acessível, o histórico, as ações pendentes</div></div></div>
+  </div>
+
+  <div class="codigo">
+    <div class="tira"><i></i><i></i><i></i></div>
+    <pre><span class="cm"># a espinha do sistema, em uma linha</span>
+texto · print · áudio · vídeo <span class="kw">→</span> percepção <span class="kw">→</span> entendimento <span class="kw">→</span> conhecimento
+   <span class="kw">→</span> investigação <span class="kw">→</span> ação <span class="kw">→</span> aprendizado <span class="kw">→</span> painel</pre>
+  </div>
+</section>
+
+<section class="tern" id="cerebro" style="border:none">
+  <div class="kicker">A rede neural</div>
+  <h2>Escrita do zero. E mostra como pensou.</h2>
+  <p class="lead">Nenhum modelo baixado, nenhuma API de terceiro. Camada por camada em NumPy — <b>percepção, ativação, custo, retropropagação</b> — com o gradiente conferido contra a derivada numérica. E quando ela não tem certeza, mostra os palpites e deixa você escolher.</p>
+
+  <div class="numeros">
+    <div class="numero"><div class="v">55</div><div class="r">intenções no domínio de suporte</div></div>
+    <div class="numero"><div class="v">25.249</div><div class="r">frases de treino, escritas à mão</div></div>
+    <div class="numero"><div class="v">67,7%</div><div class="r">acerto em validação cruzada</div></div>
+    <div class="numero"><div class="v">0,90</div><div class="r">limiar de confiança calibrado</div></div>
+    <div class="numero"><div class="v">799/800</div><div class="r">conjunto de guarda preservado</div></div>
+  </div>
+</section>
+
+<section id="estado">
+  <div class="kicker">Estado atual</div>
+  <h2>Não é conceito. É construção medida.</h2>
+  <p class="lead">Cada degrau funciona sozinho e pode ser mostrado. O que está pronto está medido — e o que não está, está declarado.</p>
+
+  <div class="lado">
+    <div class="bloco">
+      <h3>Já funciona</h3>
+      <ul>
+        <li>Motor da rede: Camada, Rede, Sigmoid, Softmax, Entropia Cruzada — tudo NumPy</li>
+        <li>Gradiente conferido numericamente (reprova erro de propósito)</li>
+        <li>Classificador do domínio de suporte, retreinado e medido</li>
+        <li>Discussão <b style="color:var(--ok)">“Errei? Clique na intenção certa”</b> — ensina na hora</li>
+        <li>Fluxo de pedidos: entende “quero criar um projeto” e desenha o plano</li>
+        <li>Painel web local, estilo terminal anos 90</li>
+      </ul>
+    </div>
+    <div class="bloco nao">
+      <h3>Em construção</h3>
+      <ul>
+        <li>CNN do zero no MNIST — meta: bater os 95,94% da rede densa (23.860 parâmetros)</li>
+        <li>OCR de print de tela (achar texto antes de reconhecer caractere)</li>
+        <li>Áudio: FFT → espectrograma → a mesma CNN</li>
+        <li>Base de casos N1 ponta a ponta, só texto</li>
+        <li>Ação com risco, confirmação e desfazer</li>
+        <li>Integração VS Code</li>
+      </ul>
+    </div>
+  </div>
+</section>
+
+<section class="tern" id="painel" style="border:none">
+  <div class="kicker">O painel</div>
+  <h2>Ver por dentro</h2>
+  <p class="lead">A conversa acontece numa tela estilo Devin com tema retrô de terminal — e o mais importante: quando a rede acerta com confiança, <b>a resposta vem na ponta da língua, sem precisar ver a rede por dentro</b>. Quando ela erra, mostra exatamente o que calculou.</p>
+  <div class="codigo">
+    <div class="tira"><i></i><i></i><i></i></div>
+    <pre><span class="kw">&gt;</span> quero criar um projeto
+<span class="cm">Bora! Vamos desenhar o seu projeto juntos.</span>
+<span class="cm">Pra eu montar certinho, me conta: que linguagem você quer usar,</span>
+<span class="cm">que tipo de programa você imagina, como ele vai se chamar</span>
+<span class="cm">e o que ele vai fazer por você (a finalidade).</span>
+
+<span class="kw">&gt;</span> python
+
+<span class="cm">Fechou — já anotei: <b>python</b>.</span>
+<span class="cm">Me conta a próxima parte…</span></pre>
+  </div>
+  <div class="galeria">
+    <h3 class="galeria-titulo">Treinamento na prática</h3>
+    <figure><img src="prints/01.png" alt="Painel do DevDesk AI" loading="lazy"></figure>
+    <figure><img src="prints/02.png" alt="Painel do DevDesk AI" loading="lazy"></figure>
+    <figure><img src="prints/03.png" alt="Painel do DevDesk AI" loading="lazy"></figure>
+    <figure><img src="prints/04.png" alt="Painel do DevDesk AI" loading="lazy"></figure>
+    <figure><img src="prints/05.png" alt="Painel do DevDesk AI" loading="lazy"></figure>
+  </div>
+</section>
+
+<section class="cta-final">
+  <h2>Quer ver a máquina por dentro?</h2>
+  <p>O código, a arquitetura e o diário de cada decisão estão no repositório.</p>
+  <a class="cta" href="https://github.com/Duduedulopes/DevDesk_AI">► Ver no GitHub</a>
+</section>
+
+<footer>
+  <div class="roda">
+    <a class="logo" href="#topo"><span class="ic">▮</span>DevDesk<span class="aro">_AI</span></a>
+    <p>Um assistente de suporte técnico e desenvolvimento, com rede neural própria e privacidade total — feito para entender a sua máquina, e não para enviar os seus dados para lugar nenhum.</p>
+    <div class="limks">
+      <a href="https://github.com/Duduedulopes/DevDesk_AI">GitHub</a>
+      <a href="https://github.com/Duduedulopes/DevDesk_AI/blob/main/README.md">Documentação</a>
+      <a href="https://github.com/Duduedulopes/DevDesk_AI/blob/main/ARQUITETURA.md">Arquitetura</a>
+    </div>
+    <p style="margin-top:26px;color:var(--tinta2)">Eduardo Lopes · 2026 · código aberto (MIT)</p>
+  </div>
+</footer>
+
+<script>
+(function(){
+  var c=document.getElementById('chuva'),ctx=c.getContext('2d');
+  var chars='01ﾊｨｽﾀﾖ01ﾊｨｽﾀﾖ01ﾊｨｽﾀﾖﾎｹ01DEVDeskAIDE64DESkTech';
+  var tam=16,cols,linhas=[];
+  function redimensionar(){
+    c.width=innerWidth;c.height=innerHeight;
+    cols=Math.ceil(c.width/tam);
+    linhas=[];
+    for(var i=0;i<cols;i++)linhas.push(Math.random()*(c.height/tam));
+  }
+  redimensionar();
+  addEventListener('resize',redimensionar);
+  setInterval(function(){
+    ctx.fillStyle='rgba(13,18,14,0.08)';
+    ctx.fillRect(0,0,c.width,c.height);
+    ctx.font=tam+'px monospace';
+    for(var i=0;i<cols;i++){
+      var txt=chars[Math.floor(Math.random()*chars.length)];
+      var y=linhas[i]*tam;
+      ctx.fillStyle='rgba(0,255,65,'+(0.12+Math.random()*0.28)+')';
+      ctx.fillText(txt,i*tam,y);
+      if(y>c.height&&Math.random()>0.975)linhas[i]=0;
+      linhas[i]++;
+    }
+  },70);
+})();
+</script>
+
 </body>
 </html>
