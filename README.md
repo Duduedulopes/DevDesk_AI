@@ -174,3 +174,9 @@ Este projeto está sob a licença MIT. Veja o arquivo LICENSE para mais detalhes
 
 
 **DevDesk AI** - O assistente técnico e desenvolvedor que realmente entende o seu sistema.
+
+## 🌐 Site do Projeto
+
+Conheça o DevDesk AI pelo site publicitário — a tese, as camadas, o estado atual de cada degrau e o painel em ação:
+
+- **https://duduedulopes.github.io/DevDesk_AI/**
