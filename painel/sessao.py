@@ -1337,24 +1337,37 @@ class Sessao:
 
         v = p["candidatos"][0]
 
-        # ACIMA DO LIMIAR: age. Abaixo: oferece e não chuta.
-        if p["confiavel"]:
-            feito = respostas.responder(self, v["nome"], frase)
-            if feito and feito[0]:
-                if (self._primeiro_pedido
-                        and v["nome"] not in _CONVERSA_PURA):
-                    # A PRIMEIRA RESPOSTA DA PRIMEIRA PERGUNTA. Um passo
-                    # antes da resposta técnica faz a conversa parecer
-                    # conversa — mas só uma vez, e nunca diante de uma
-                    # saudação ou de um pedido de criação (que já tem a
-                    # mensagem dele).
-                    self._primeiro_pedido = False
-                    return respostas.preludio(self) + "\n\n" + feito[0]
-                return feito[0]
-            return (f"Entendi como **{v['nome']}**, mas essa intenção ainda não tem ação "
-                    f"ligada. O que já funciona: `ajuda`, perguntas sobre a máquina, "
-                    f"`abrir <caminho>` e `> comando`.")
+        # RESPONDE SEMPRE QUE PUDER — inclusive abaixo do limiar.
+        #
+        # Antes, confiança baixa virava silêncio e a conversa parava.
+        # Agora o assistente TENTA responder com o melhor palpite de
+        # qualquer forma, e a dúvida aparece como aviso na resposta em
+        # vez de sumir com ela. O freio de verdade continua em outro
+        # lugar — a camada 5 — que é quem exige confirmação antes de
+        # qualquer ação que escreve; baixar a barra do "responder" não
+        # afrouxa o freio de "agir". O cartão da rede (barras + "Errei?")
+        # continua na tela abaixo do limiar para corrigir na hora.
+        feito = respostas.responder(self, v["nome"], frase)
+        if feito and feito[0]:
+            texto = feito[0]
+            if self._primeiro_pedido and not p["confiavel"]:
+                # Dúvida quebra o gelo sozinha: aviso primeiro, sem prelúdio.
+                self._primeiro_pedido = False
+                return (f"*(te respondendo com {v['probabilidade']:.0%} de "
+                        f"certeza — se eu entender errado, é só clicar em "
+                        f"\"Errei?\" ali embaixo)*\n\n{texto}")
+            if not p["confiavel"]:
+                texto = (f"*(te respondendo com {v['probabilidade']:.0%} de certeza — "
+                         f"se eu entender errado, é só clicar em \"Errei?\" "
+                         f"ali embaixo)*\n\n{texto}")
+            if (self._primeiro_pedido
+                    and v["nome"] not in _CONVERSA_PURA):
+                self._primeiro_pedido = False
+                return respostas.preludio(self) + "\n\n" + texto
+            return texto
 
+        # Nem o melhor palpite tem ação ligada: não há o que responder.
+        # Mostrar os palpites é o único caminho honesto.
         self.virar("aguardando_voce")     # nao sei: a bola esta com voce
         opcoes = "\n".join(f"· **{c['nome']}** ({c['probabilidade']:.0%})"
                            for c in p["candidatos"])
