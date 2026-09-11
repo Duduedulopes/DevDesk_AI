@@ -13,12 +13,12 @@ import pytest
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
-from rede import dados, embutimento, treino
-from rede.ativacao import Softmax, sigmoid, sigmoid_derivada, softmax
-from rede.camada import Camada
-from rede.custo import EntropiaCruzada, EntropiaCruzadaCategorica, Quadratico
-from rede.rede import Rede
-from rede.retropropagacao import conferir_numericamente, gradiente
+from nucleo import dados, embutimento, treino
+from nucleo.ativacao import Softmax, sigmoid, sigmoid_derivada, softmax
+from nucleo.camada import Camada
+from nucleo.custo import EntropiaCruzada, EntropiaCruzadaCategorica, Quadratico
+from nucleo.rede import Rede
+from nucleo.retropropagacao import conferir_numericamente, gradiente
 
 
 # ---------------------------------------------------------------- ativacao
