@@ -1,3 +1,13 @@
 numpy>=1.19.0
 opencv-python>=4.5.0
 scipy>=1.5.0
+
+# percepção visual (CLIP): a primeira chamada baixa os pesos uma vez;
+# depois disso tudo roda offline.
+torch>=2.6
+torchvision>=0.21
+open-clip-torch>=3.0
+pillow>=10.0
+
+# percepção de áudio (ASR): a primeira chamada baixa o modelo uma vez.
+faster-whisper>=1.0

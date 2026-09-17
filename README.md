@@ -9,15 +9,18 @@
 
 DevDesk AI é um assistente inteligente que recebe problemas do jeito que eles chegam na vida real — um print, um áudio de alguém reclamando, um vídeo da tela travando, um texto torto — e ajuda a resolver: do N1 (procedimento conhecido) até o N3 (achar o defeito no código) e o Desenvolvimento de um projeto do zero.
 
-**Roda inteiro na máquina.** Sem nuvem, sem API de terceiro, sem chave. A rede é escrita do zero, com NumPy, e o que ela não souber ela aprende aqui dentro.
+**Roda inteiro na máquina.** Sem nuvem, sem API de terceiro, sem chave — depois da primeira instalação, nada sai daqui.
+
+O **motor** é escrito do zero, em NumPy: camada, ativação, custo e retropropagação são código próprio e auditáveis, com o gradiente conferido contra a derivada numérica. Para os **olhos e os ouvidos** (CLIP e Whisper) o projeto usa pesos pré-treinados, baixados uma vez e rodando offline dali em diante — treinar percepção do zero exige bilhões de exemplos, e esse custo não se repete.
 
 ## ✨ Características
 
-- **🧠 Rede Neural Própria**: CNN e redes densas escritas do zero com NumPy
+- **🧠 Motor Próprio**: redes densas, retropropagação e custo escritos do zero com NumPy, com prova numérica do gradiente
+- **👁️ Percepção Pré-treinada**: CLIP (imagem) e Whisper (áudio) com pesos baixados uma vez — offline dali em diante
 - **🔍 Investigação Inteligente**: Coleta evidências do sistema sem alterações
 - **⚡ Ação Controlada**: Executa comandos com confirmação e capacidade de desfazer
 - **📚 Aprendizado Contínuo**: Cada caso resolvido vira exemplo para melhorias
-- **👁️ Percepção Multimodal**: Texto, imagens (prints), áudio e vídeo ⏳
+- **🗜️ Compressão Própria**: DEFLATE e gzip escritos do zero, conferidos byte a byte contra o `zlib`
 - **🖥️ Interface Retrô**: Painel web local com tema de terminal anos 90
 - **🔒 Privacidade Total**: Tudo roda localmente, seus dados nunca saem da máquina
 
@@ -126,14 +129,17 @@ Interface estilo Devin com:
 ## 🧪 Testes e Validação
 
 ```bash
-# Rodar provas numéricas do gradiente
-python programas/conferir_gradiente.py
+# A suite inteira
+python -m pytest provas/ -q
 
-# Testar modelos
+# O motor: gradiente conferido contra a derivada numérica, MNIST, camadas
+python -m pytest provas/test_nucleo.py -q
+
+# A compressão: o que eu escrevo o zlib lê, e o contrário também
+python provas/conferir_deflate.py
+
+# Os modelos treinados
 python testar_modelos.py
-
-# Validar CNN no MNIST
-python visao/mnist/testar_cnn.py
 ```
 
 ## 📊 Progresso do Projeto
@@ -154,14 +160,22 @@ python visao/mnist/testar_cnn.py
 ## 🛠️ Stack Tecnológica
 
 - **Python 3.8+**: Linguagem principal
-- **NumPy**: Computação numérica e redes neurais
-- **OpenCV**: Processamento de imagens
-- **HTTP Server**: Servidor web (biblioteca padrão)
-- **PowerShell**: Integração com sistema Windows
+- **NumPy**: o motor da rede — tudo que aprende é escrito aqui
+- **OpenCV / Pillow**: leitura e preparo de imagem
+- **open-clip-torch + torch**: os pesos do CLIP (percepção visual, pré-treinada)
+- **faster-whisper**: os pesos do Whisper (transcrição de áudio, pré-treinada)
+- **HTTP Server**: servidor web (biblioteca padrão)
+- **PowerShell**: integração com o Windows
+
+> As duas linhas de percepção são a única coisa que o projeto não escreveu:
+> são pesos pré-treinados, baixados uma vez e usados offline. O resto —
+> motor, classificador, compositor, compressão — é código deste repositório.
 
 ## 📝 Contribuindo
 
-Contribuições são bem-vindas! Por favor:
+Este é um projeto de estudo, escrito para aprender como cada peça funciona
+por dentro. Se algo aqui te for útil, use à vontade — e se achar um erro,
+abre uma issue: erro medido vale mais que elogio.
 
 
 ## 📄 Licença

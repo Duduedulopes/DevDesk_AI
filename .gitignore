@@ -57,6 +57,10 @@ treino.log
 *.pth
 checkpoints/
 
+# pesos da percepção (CLIP/Whisper): baixados uma vez, nunca no repo
+dados/visao/
+dados/audio/
+
 # Temp files
 *.tmp
 *.bak
