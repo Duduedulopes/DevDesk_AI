@@ -125,9 +125,57 @@ def construir(sessao, porteiro):
 
         def do_POST(self):
             n = int(self.headers.get("Content-Length") or 0)
+            # O ANEXO TEM LIMITE PRÓPRIO, E É AQUI QUE ELE É CONFERIDO —
+            # antes de ler. Ler primeiro e medir depois é ler 900 MB para
+            # a memória para então dizer que era grande demais.
+            if self.path == "/api/anexo":
+                from painel import anexos as _anx
+                if n <= 0 or n > _anx.LIMITE + 2_000_000:   # folga do base64
+                    # ESCOAR O CORPO ANTES DE RECUSAR, e isto não é
+                    # frescura. Respondendo 413 enquanto o navegador ainda
+                    # está mandando os 35 MB, a conexão fecha no meio e o
+                    # `fetch` estoura com erro de rede — a pessoa vê a tela
+                    # muda em vez de "o limite é 25 MB". Medido: o cliente
+                    # levava `BrokenPipeError` e a mensagem se perdia.
+                    #
+                    # Lê em pedaços e joga fora: a memória não sobe, e
+                    # localhost escoa 35 MB em fração de segundo.
+                    resta = n
+                    while resta > 0:
+                        pedaco = self.rfile.read(min(resta, 262144))
+                        if not pedaco:
+                            break
+                        resta -= len(pedaco)
+                    return self._json({"ok": False, "porque":
+                                       "arquivo grande demais (o limite é 25 MB)"}, 413)
             corpo = json.loads(self.rfile.read(n) or b"{}")
+            if self.path == "/api/anexo":
+                from painel import anexos as _anx
+                dados, tipo = _anx.de_data_uri(corpo.get("dados", ""))
+                if not dados:
+                    return self._json({"ok": False, "porque": "não veio arquivo"}, 400)
+                if len(dados) > _anx.LIMITE:
+                    return self._json({"ok": False, "porque":
+                                       "arquivo grande demais (o limite é 25 MB)"}, 413)
+                frase, ficha = _anx.receber(corpo.get("nome", "anexo"), dados, tipo)
+                # ESTA ROTA LÊ E DEVOLVE — ELA NÃO ENVIA. O texto volta para
+                # a caixa, a pessoa confere, corrige o que o Whisper ouviu
+                # errado, e só então aperta Enviar. Quem envia é
+                # `/api/mensagem`, como em qualquer mensagem digitada.
+                #
+                # Antes esta rota chamava `sessao.receber` aqui mesmo. Era
+                # um caminho a menos, e um palpite da rede entrando na
+                # conversa sem ninguém ter lido.
+                return self._json({"ok": True, "texto": frase, "anexo": ficha})
             if self.path == "/api/mensagem":
-                sessao.receber(corpo.get("texto", ""))
+                # A FICHA VOLTA PELO NAVEGADOR, e por isso é PENEIRADA. O
+                # que chega aqui é o que a tela mandou de volta; guardar o
+                # dicionário cru seria deixar a conversa aceitar qualquer
+                # campo. Só estes cinco existem, e é só o que o cartão usa.
+                cabe = ("nome", "familia", "caminho", "bytes", "so_guardou")
+                fichas = [{k: a[k] for k in cabe if k in a}
+                          for a in (corpo.get("anexo") or []) if isinstance(a, dict)]
+                sessao.receber(corpo.get("texto", ""), anexo=fichas or None)
             elif self.path == "/api/confirmar":
                 sessao.confirmar(corpo.get("id"))
             elif self.path == "/api/recusar":

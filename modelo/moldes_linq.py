@@ -278,6 +278,388 @@ def partir_no_conector(pedido):
             (pedido[mapa[fim]:].strip() if fim < len(mapa) else ""))
 
 
+# ══════════════════════════════════════════════════════════════════════
+#  A CASCA DE CÓDIGO, E O NÚMERO BRASILEIRO
+# ══════════════════════════════════════════════════════════════════════
+#
+# Estas três funções existem porque o pedido real não chega limpo. Ele
+# chega colado do `Program.cs`, com `Console.WriteLine`, aspas, barras de
+# comentário e uma linha de tracinhos. Medido, antes delas:
+#
+#   Console.WriteLine("1. Where — Filtragem no Repositório");
+#     → transacoes.Where(t => t.ContaOrigem > "Console.WriteLine(\"1. ...")
+#
+# A frase inteira virou o valor comparado. A mesma pergunta sem a casca
+# acertava a operação.
+
+_SO_PONTUACAO = re.compile(r"^[\s\-=_*#/.]+$")
+
+
+def descascar(pedido):
+    """Tira a casca de código e devolve a frase que está dentro dela.
+
+    O QUE SAI: `Console.WriteLine(...)` (ficando o texto de dentro), as
+    barras de comentário, as linhas que são só tracinhos, a numeração de
+    item (`1.`, `a)`) e o ponto-e-vírgula do fim.
+
+    O QUE FICA: as aspas que sobraram. Depois de desembrulhar o
+    `Console.WriteLine`, toda aspa restante é aspa de VALOR — 'Concluida',
+    "Ana Silva" — e é assim que `valor_citado` sabe achar o literal sem
+    confundir com o texto de uma chamada.
+    """
+    if not pedido:
+        return ""
+    txt = str(pedido)
+    # Console.WriteLine("X") / Write("X")  →  X   (o texto de dentro serve)
+    txt = re.sub(r'Console\.\w+\s*\(\s*"((?:[^"\\]|\\.)*)"\s*\)\s*;?',
+                 lambda m: " " + m.group(1).replace('\\"', '"') + " ", txt)
+    # o que sobrou de chamada sem string dentro
+    txt = re.sub(r'Console\.\w+\s*\([^)]*\)\s*;?', " ", txt)
+    linhas = []
+    for linha in txt.splitlines():
+        l = re.sub(r"^\s*(?://+|/\*+|\*+/?)\s*", "", linha)      # // e /* */
+        l = re.sub(r"\s*\*/\s*$", "", l)
+        if _SO_PONTUACAO.match(l):        # a régua de tracinhos não diz nada
+            continue
+        l = re.sub(r"^\s*(?:\d+\s*[.)\-]|[a-zA-Z]\s*[.)])\s+", "", l)  # 1.  a)
+        linhas.append(l)
+    txt = " ".join(x for x in linhas if x.strip())
+    # A RÉGUA DE TRACINHOS depois de desembrulhada vira texto NO MEIO da
+    # linha, e o corte por linha inteira não a pega mais. Some aqui, em
+    # qualquer posição: quatro traços seguidos nunca são palavra.
+    txt = re.sub(r"[-=_*~]{4,}", " ", txt)
+    txt = re.sub(r"[;{}]+", " ", txt)
+    return re.sub(r"\s{2,}", " ", txt).strip()
+
+
+def valor_citado(pedido):
+    """O texto entre aspas, quando ele é um VALOR e não uma frase inteira.
+
+    O enunciado diz o valor com todas as letras — status 'Concluida',
+    cliente "Ana Silva", categoria 'Tecnologia'. Isso não é palpite de
+    cabeça nenhuma: está escrito, entre aspas, e quem adivinha o que está
+    escrito erra de graça. Era o caso do 8a:
+
+        FirstOrDefault(t => t.CpfCliente > "Buscar a primeira transação
+                                            da cliente \"Ana Silva\"")
+
+    O TETO DE 40 LETRAS separa um valor de uma frase citada. Nome de
+    cliente, nome de categoria e nome de enum cabem folgado; uma oração
+    não cabe — e se não couber, é melhor não ter valor nenhum do que ter
+    a pergunta inteira como valor.
+    """
+    achados = re.findall(r"'([^']{1,40})'|\"([^\"]{1,40})\"", descascar(pedido) or "")
+    for a, b in achados:
+        v = (a or b).strip()
+        # descarta o que claramente não é valor: sobra de código ou frase
+        if v and not re.search(r"[(){};=]|\s{2,}", v) and len(v.split()) <= 4:
+            return v
+    return None
+
+
+def numero_da_frase(texto):
+    """O número, lido como BRASILEIRO. Devolve o texto pronto para o C#.
+
+    `R$ 1.000,00` é mil reais. A conta antiga fazia
+    `"1.000,00".replace(",", ".")` e entregava `1.000` ao C#, que é um
+    decimal válido — vale UM. Compilava, passava no juiz, e filtrava pelo
+    número errado: o pior defeito possível neste projeto, porque o
+    compilador não pega.
+
+    A regra que separa: ponto de MILHAR vem sempre em grupos de três
+    (`15.000`, `1.234.567`); ponto DECIMAL, não (`1.5`). Então
+    `\\d{1,3}(\\.\\d{3})+` é milhar e o resto é decimal.
+    """
+    if not texto:
+        return None
+    t = re.sub(r"R\$\s*", " ", str(texto))
+    # 1.000,00  ·  1.234.567  ·  15.000
+    m = re.search(r"-?\d{1,3}(?:\.\d{3})+(?:,\d+)?", t)
+    if m:
+        n = m.group(0).replace(".", "").replace(",", ".")
+        # `1000.00m` e `1000m` valem o mesmo para o C#, mas ninguém escreve
+        # o primeiro. Os centavos zerados de "R$ 1.000,00" saem daqui.
+        return n[:-3] if n.endswith(".00") else n
+    # 1500,50 — vírgula decimal
+    m = re.search(r"-?\d+,\d+", t)
+    if m:
+        return m.group(0).replace(",", ".")
+    # 1500  ·  1.5 (ponto decimal de programador)
+    m = re.search(r"-?\d+(?:\.\d+)?", t)
+    return m.group(0) if m else None
+
+
+
+# ══════════════════════════════════════════════════════════════════════
+#  O PORTUGUÊS DO ENUNCIADO
+# ══════════════════════════════════════════════════════════════════════
+#
+# Medido: os 12 desafios do Program.cs deram 2/12, e a maior parte dos
+# erros não era de raciocínio — era de vocabulário. O corpus dizia
+# "pega a primeira transacao com cliente nome igual a Ana Silva"; o
+# enunciado diz "Buscar a primeira transação da cliente 'Ana Silva'".
+# A rede nunca tinha visto "Buscar", "Calcular", "Validar", "Projetar".
+#
+# Isto não é uma segunda rede nem um segundo caminho: são frases a
+# mais no MESMO corpus, com o MESMO gabarito. O que muda é só a
+# quantidade de jeitos de dizer a mesma coisa.
+FORMAIS = {'filtrar': ['Filtrar apenas {ent} com {p} {cmp} {v}', 'Filtrar {ent} cujo {p} {cmp} {v}', 'Selecionar as {ent} com {p} {cmp} {v}', 'Obter {ent} onde {p} {cmp} {v}', 'Restringir {ent} a {p} {cmp} {v}', 'Retornar as {ent} com {p} {cmp} {v}'],
+            'primeiro': ['Buscar a primeira {ent} com {p} {cmp} {v}', 'Buscar a primeira {ent} onde {p} {cmp} {v}', 'Localizar a primeira {ent} com {p} {cmp} {v}', 'Retornar a primeira {ent} com {p} {cmp} {v}', 'Obter a primeira {ent} cujo {p} {cmp} {v}', 'Tentar buscar uma {ent} com {p} {cmp} {v}'],
+            'somar': ['Calcular o montante total de {p} em {ent}', 'Calcular o total de {p} de {ent}', 'Calcular a soma de {p} das {ent}', 'Totalizar {p} de {ent}', 'Somar {p} das {ent}', 'Apurar o total de {p} em {ent}', 'Calcular o montante total movimentado em {p} de {ent}'],
+            'contar': ['Contar quantas {ent} {tem} {p} {cmp} {v}', 'Contar {ent} com {p} {cmp} {v}', 'Contabilizar {ent} onde {p} {cmp} {v}', 'Apurar a quantidade de {ent} com {p} {cmp} {v}', 'Determinar quantas {ent} {tem} {p} {cmp} {v}'],
+            'todos': ['Validar se todas as {ent} {tem} {p} {cmp} {v}', 'Validar se todas as {ent} possuem {p} {cmp} {v}', 'Verificar se todas as {ent} {tem} {p} {cmp} {v}', 'Garantir que todas as {ent} tenham {p} {cmp} {v}', 'Conferir se toda {ent} {tem} {p} {cmp} {v}'],
+            'existe': ['Verificar se existe alguma {ent} com {p} {cmp} {v}', 'Verificar se há {ent} com {p} {cmp} {v}', 'Identificar se existe {ent} com {p} {cmp} {v}', 'Checar a existência de {ent} com {p} {cmp} {v}', 'Detectar se alguma {ent} {tem} {p} {cmp} {v}'],
+            'agrupar': ['Agrupar as {ent} por {p}', 'Agrupar as {ent} por {p} exibindo o total de cada', 'Consolidar {ent} por {p}', 'Sumarizar as {ent} por {p}', 'Separar as {ent} por {p} mostrando as ocorrências de cada'],
+            'projetar': ['Projetar a lista de {ent} para {p}', 'Extrair {p} de {ent}', 'Selecionar apenas {p} das {ent}', 'Mapear {ent} para {p}', 'Listar somente {p} de {ent}'],
+            'ordenar_desc': ['Listar as {ent} ordenadas por {p} decrescente', 'Ordenar as {ent} por {p} em ordem decrescente', 'Listar as {ent} da maior {p} para a menor', 'Listar as {ent} da mais recente para a mais antiga por {p}', 'Classificar {ent} por {p} decrescente', 'Listar as {ent} ordenadas por {p} desc', 'Ordenar {ent} por {p} desc', '{ent} ordenadas por {p} descending', 'Listar as {ent} da mais recente para a mais antiga ({p} desc)', 'Listar as {ent} do maior {p} para o menor'],
+            'ordenar_asc': ['Listar as {ent} ordenadas por {p} crescente', 'Ordenar as {ent} por {p} em ordem crescente', 'Listar as {ent} da menor {p} para a maior', 'Listar as {ent} da mais antiga para a mais recente por {p}', 'Classificar {ent} por {p} crescente', 'Listar as {ent} ordenadas por {p} asc', 'Ordenar {ent} por {p} asc', '{ent} ordenadas por {p} ascending', 'Listar as {ent} da mais antiga para a mais recente ({p} asc)', 'Listar as {ent} do menor {p} para o maior']}
+
+# ══════════════════════════════════════════════════════════════════════
+#  OS MOLDES QUE FALTAVAM
+# ══════════════════════════════════════════════════════════════════════
+#
+# Medido nos 12 desafios do Program.cs: três deles não eram erro da rede,
+# eram pedido que a SAÍDA não sabia escrever. `GroupBy` sozinho não conta
+# nada, e "exibindo o total de ocorrências de cada nível" é contagem por
+# grupo; `Select(t => t.Valor)` não é projetar para um DTO.
+#
+# Mudar a FORMA do problema já valeu 0% → 98,7% neste projeto uma vez.
+# Aqui é a mesma ideia, menor: uma saída que não consegue dizer a resposta
+# nunca vai acertá-la, por melhor que seja o treino.
+OPERACOES["agrupar_contando"] = {
+    "linq": "{lista}.GroupBy({x} => {x}.{P})"
+            ".Select(g => new {{ Chave = g.Key, Total = g.Count() }}).ToList()",
+    "pedidos": ["quantos {ent} tem de cada {p}",
+                "conta {ent} por {p}",
+                "Agrupar as {ent} por {p} exibindo o total de cada",
+                "Agrupar {ent} por {p} mostrando o total de ocorrências de cada",
+                "Contar as {ent} agrupadas por {p}",
+                "Consolidar {ent} por {p} com a contagem de cada",
+                "quantidade de {ent} por {p}",
+                "total de {ent} de cada {p}"],
+}
+OPERACOES["projetar_dto"] = {
+    # {corpo} é preenchido por `mapear_dto`, não pela rede
+    "linq": "{lista}.Select({x} => new {P} {{ {corpo} }}).ToList()",
+    "pedidos": ["Projetar a lista de {ent} para {p}",
+                "Projetar {ent} para {p}",
+                "Converter {ent} para {p}",
+                "Mapear {ent} para {p}",
+                "transforma {ent} em {p}",
+                "Montar a lista de {p} a partir de {ent}",
+                "Projetar a lista de {ent} para {p} formatando valores e datas"],
+}
+
+for _op, _frases in FORMAIS.items():
+    if _op in OPERACOES:
+        OPERACOES[_op]["pedidos"] = list(OPERACOES[_op]["pedidos"]) + _frases
+
+# ══════════════════════════════════════════════════════════════════════
+#  O DTO: de uma classe para outra
+# ══════════════════════════════════════════════════════════════════════
+FORMATO = {"decimal": '"C"', "double": '"C"', "float": '"C"',
+           "DateTime": '"dd/MM/yyyy HH:mm"', "DateTimeOffset": '"dd/MM/yyyy HH:mm"'}
+SUFIXOS_DE_FORMATO = ("Formatado", "Formatada", "Formatted", "Texto", "Str")
+
+
+def mapear_dto(props_origem, props_dto, enums, x="x"):
+    """`ValorFormatado = t.Valor.ToString("C")` — o corpo do `new X { ... }`.
+
+    NÃO É REDE, E NÃO DEVE SER. Casar `CodigoRastreio` com `CodigoRastreio`
+    é comparação de texto exato; casar `ValorFormatado` com `Valor` é tirar
+    um sufixo conhecido. Chamar uma rede para decidir isso seria pedir
+    palpite onde existe resposta — e palpite erra às vezes, `==` nunca.
+
+    As três regras, nesta ordem:
+        1. mesmo nome              → A = t.A
+        2. nome + sufixo de formato → AFormatado = t.A.ToString("C")
+        3. maior prefixo em comum   → DataFormatada ← DataHora
+
+    E o `.ToString()` entra sozinho quando o destino é `string` e a origem
+    não é: `Status` é enum, `Status` do DTO é texto, e sem a conversão o
+    compilador recusa. Regra da linguagem, não gosto.
+    """
+    por_nome = {pr.nome: pr for pr in props_origem}
+    linhas, nao_achou = [], []
+    for d in props_dto:
+        origem, fmt = por_nome.get(d.nome), None
+        if origem is None:
+            for suf in SUFIXOS_DE_FORMATO:          # ValorFormatado → Valor
+                if d.nome.endswith(suf) and d.nome[:-len(suf)] in por_nome:
+                    origem = por_nome[d.nome[:-len(suf)]]
+                    fmt = FORMATO.get(origem.tipo)
+                    break
+        if origem is None:                          # DataFormatada → DataHora
+            melhor, tam = None, 0
+            for nome, pr in por_nome.items():
+                i = 0
+                while i < min(len(nome), len(d.nome)) and nome[i] == d.nome[i]:
+                    i += 1
+                if i > tam and i >= 4:
+                    melhor, tam = pr, i
+            if melhor is not None:
+                origem, fmt = melhor, FORMATO.get(melhor.tipo)
+        if origem is None:
+            nao_achou.append(d.nome)
+            continue
+        leitura = f"{x}.{origem.nome}"
+        if d.de_texto and not origem.de_texto:
+            leitura += f".ToString({fmt})" if fmt else ".ToString()"
+        elif fmt and d.de_texto:
+            leitura += f".ToString({fmt})"
+        linhas.append(f"{d.nome} = {leitura}")
+    return linhas, nao_achou
+
+
+def dtos_de(proj):
+    """As classes que servem de DESTINO de projeção.
+
+    Um DTO é uma classe do projeto que NÃO tem lista própria — ninguém
+    guarda uma `List<TransacaoSeguraDto>`, ela é feita na hora. É esse o
+    sinal, e não o sufixo do nome: `...Dto`, `...ViewModel` e `...Resumo`
+    são convenções que mudam de time para time; "classe sem lista" é
+    estrutural e vale em qualquer projeto.
+    """
+    return [n for n in proj.entidades
+            if not proj.lista_de(n) and len(proj.opcoes_de(n)) >= 2]
+
+
+# ══════════════════════════════════════════════════════════════════════
+#  DUAS CONDIÇÕES — o teto
+# ══════════════════════════════════════════════════════════════════════
+#
+# "Filtrar apenas transações com status 'Concluida' CUJO VALOR seja
+# superior a R$ 1.000,00" pede duas coisas ao mesmo tempo. Todo molde
+# tinha exatamente um `{lit}`: a rede escolhia uma das duas e largava a
+# outra — e não por erro de treino. Não havia como DIZER a resposta.
+#
+# Partir a frase e resolver cada pedaço com a máquina que já existe é
+# mais barato e mais confiável que uma cabeça nova: onde a frase se parte
+# está escrito ("cujo", " e ", " ou "), e cada metade vira uma pergunta
+# do tamanho das que a rede já responde bem.
+
+# " e " / " ou " juntam condições; "cujo/onde/que tenha" abrem a segunda
+JUNTORES = [(" ou ", "||"), (" e ", "&&"),
+            (" cujo ", "&&"), (" cuja ", "&&"), (" cujos ", "&&"),
+            (" cujas ", "&&"), (" e tambem ", "&&"), (" alem de ", "&&")]
+
+
+def _tem_condicao(parte, palavras=()):
+    """Este pedaço de frase carrega uma condição?
+
+    Número, aspas e palavra de comparação são sinais que valem em qualquer
+    projeto. `palavras` é o que só o projeto sabe: os nomes dos valores de
+    enum ditos em português ("suspeita fraude", "concluida"). Sem isso,
+    "...suspeita de fraude no dataset OU acima de R$ 15.000" não partia —
+    o lado esquerdo é uma condição escrita por extenso, sem um dígito nem
+    uma aspa para denunciá-la.
+    """
+    if not parte or not parte.strip():
+        return False
+    if (achar_comparacao(parte)[0] or re.search(r"\d", parte)
+            or re.search(r"['\"]", parte)):
+        return True
+    plano = _sem_acento_com_mapa(parte)[0]
+    return any(w and w in plano for w in palavras)
+
+
+def partir_condicoes(pedido, palavras=()):
+    """`(partes, juntor)` — as condições da frase e o `&&`/`||` que as liga.
+
+    Devolve UMA parte quando só há uma condição, que é o caso comum e
+    continua pelo caminho de sempre.
+
+    O CORTE SÓ VALE SE OS DOIS LADOS TIVEREM CONDIÇÃO. "soma o valor E a
+    taxa" tem um " e " e uma condição só; cortar ali inventaria um filtro
+    do nada. `_tem_condicao` pede número, aspas ou palavra de comparação
+    nos DOIS lados — sem isso o " e " é só um "e" de português.
+    """
+    if not pedido:
+        return [pedido], "&&"
+    plano, mapa = _sem_acento_com_mapa(pedido)
+    for palavra, juntor in JUNTORES:
+        for m in re.finditer(re.escape(palavra), plano):
+            i, f = mapa[m.start()], mapa[min(m.end(), len(mapa) - 1)]
+            a, b = pedido[:i].strip(), pedido[f:].strip()
+            if _tem_condicao(a, palavras) and _tem_condicao(b, palavras):
+                return [a, b], juntor
+    return [pedido], "&&"
+
+
+# os verbos que separam "de QUEM se fala" do "o QUE se valida"
+#
+#   "todas as transações CONCLUÍDAS  possuem  código de autorização"
+#    └──── quem: o Where ────┘                └── o que: o predicado ──┘
+#
+# É a mesma ideia do `partir_no_conector`, com outras palavras: onde a
+# frase se divide está escrito nela. `All(A && B)` e `Where(A).All(B)`
+# não querem dizer a mesma coisa — o primeiro exige que TODAS sejam A e
+# B; o segundo, que toda A seja B —, e é o verbo que diz qual dos dois.
+VERBOS_DE_PREDICADO = ["possuem", "possui", "possuam", "estao com",
+                       "contem", "apresentam", "apresenta", "tenham"]
+# "preenchido" não é um valor: é "diferente de vazio"
+PREENCHIDO = ["preenchido", "preenchida", "preenchidos", "preenchidas",
+              "nao nulo", "informado", "informada", "nao vazio"]
+
+
+def partir_no_verbo(pedido):
+    """`(quem, o_que)` — ou `(pedido, None)` quando não há verbo separando."""
+    if not pedido:
+        return pedido, None
+    plano, mapa = _sem_acento_com_mapa(pedido)
+    for v in VERBOS_DE_PREDICADO:
+        alvo = " " + _sem_acento_com_mapa(v)[0].strip() + " "
+        i = plano.find(alvo)
+        if i < 0:
+            continue
+        a = pedido[:mapa[i]].strip()
+        j = min(i + len(alvo), len(mapa) - 1)
+        b = pedido[mapa[j]:].strip()
+        if a and b:
+            return a, b
+    return pedido, None
+
+
+def pede_preenchido(texto):
+    """A frase pede "não vazio"? — `CodigoAutorizacao != null`."""
+    plano = _sem_acento_com_mapa(texto or "")[0]
+    return any(w in plano for w in PREENCHIDO)
+
+
+def cabe(op_nome, prop, enums):
+    """Esta propriedade pode ser usada NESTA operação? — a regra, num lugar só.
+
+    `Sum(t => t.Categoria)` não é uma escolha ruim: é um erro de TIPO.
+    Categoria é string, Sum quer número, e o compilador recusa. Não é
+    gosto meu — é regra da linguagem.
+
+    POR QUE ESTA FUNÇÃO EXISTE, E É O CONSERTO DE UM BURACO
+
+    Esta regra já estava escrita no `gerar`: o corpus nunca ensinou
+    `somar` com uma propriedade de texto. Mas a INFERÊNCIA escolhia entre
+    TODAS as propriedades da classe, sem olhar a operação — a restrição
+    valia no treino e era jogada fora na hora de responder. Medido:
+
+        "Calcular o montante total movimentado em transações concluídas"
+            → transacoes.Where(...).Sum(t => t.Tipo)      (enum!)
+        "Calcular o total movimentado na categoria 'Tecnologia'"
+            → transacoes.Sum(t => t.Categoria)            (string!)
+
+    Nenhum dos dois compila. Agora as duas pontas chamam esta função, e
+    não há como uma mudar sem a outra.
+    """
+    fam = familia(prop, enums)
+    if not fam or prop.colecao:
+        return False
+    if op_nome == "somar":
+        return bool(prop.de_numero)
+    if op_nome in ("agrupar", "agrupar_contando"):
+        return fam in ("enum", "texto", "bool")
+    if op_nome in ("ordenar_asc", "ordenar_desc"):
+        return fam in ("numero", "data", "texto")
+    return True
+
+
 def metades(pedido, operacao):
     """As duas metades — mas SÓ onde a frase realmente tem duas.
 
@@ -295,6 +677,17 @@ def metades(pedido, operacao):
     parte. Para as outras, as duas metades são a frase inteira.
     """
     if OPERACOES.get(operacao, {}).get("aceita_predicado"):
+        # DUAS CONDIÇÕES TAMBÉM SÃO DUAS METADES, e esquecer isso custou
+        # 6,7 pontos nas bases novas (96,7% → 90,0%) na primeira tentativa.
+        #
+        # Com dois nomes de propriedade na mesma frase e a cabeça lendo a
+        # frase inteira, ela volta a ter de adivinhar qual metade é a sua
+        # — o mesmo defeito que este arquivo já tinha corrigido para o
+        # `Sum`, reaparecendo por outra porta. A regra é a mesma: cada
+        # cabeça recebe o pedaço onde a resposta dela está.
+        partes, _ = partir_condicoes(pedido)
+        if len(partes) == 2:
+            return partes[0], partes[1]
         return pedido, pedido
     return partir_no_conector(pedido)
 
@@ -425,14 +818,10 @@ def gerar(proj, quantos=8000, semente=7):
             # atrapalhava: a palavra "suspeita" puxava para o VALOR
             # `SuspeitaFraude` em vez da propriedade booleana.
             cand = [p for p in props if familia(p, enums) == "enum"]
-        elif op_nome in ("somar",):
-            cand = [p for p in props if p.de_numero]
-        elif op_nome in ("agrupar",):
-            cand = [p for p in props if familia(p, enums) in ("enum", "texto", "bool")]
-        elif op_nome in ("ordenar_asc", "ordenar_desc"):
-            cand = [p for p in props if familia(p, enums) in ("numero", "data", "texto")]
         else:
-            cand = [p for p in props if familia(p, enums) and not p.colecao]
+            # A MESMA `cabe` que a inferência usa. Duas cópias da regra
+            # viram duas regras diferentes no primeiro conserto.
+            cand = [p for p in props if cabe(op_nome, p, enums)]
         if not cand:
             continue
         p = r.choice(cand)
@@ -475,6 +864,42 @@ def gerar(proj, quantos=8000, semente=7):
         else:
             falado = ""
 
+        # PROJETAR PARA UM DTO não escolhe propriedade: escolhe CLASSE de
+        # destino, e o corpo do `new` sai de `mapear_dto`, que é comparação
+        # de nomes e não palpite. Se o projeto não tem DTO nenhum, esta
+        # operação simplesmente não entra no corpus dele.
+        if op_nome == "projetar_dto":
+            alvos = [d for d in dtos_de(proj) if d != ent]
+            if not alvos:
+                continue
+            destino = r.choice(alvos)
+            props_destino = proj.opcoes_de(destino)
+            corpo, faltou = mapear_dto(props, props_destino, enums, x=lista[0])
+            # UM PAR SÓ ENTRA SE A PROJEÇÃO FOR DE VERDADE. O gerador
+            # produzia `logs → TransacaoSeguraDto` casando 1 de 7 campos
+            # por parentesco de prefixo (`CodigoRastreio` ← `CodigoErro`).
+            # Isso não é uma projeção, é uma coincidência de letras — e
+            # treinar nela ensina a rede a projetar qualquer coisa em
+            # qualquer coisa.
+            if not corpo or len(corpo) < max(2, int(0.6 * len(props_destino))):
+                continue
+            frase = r.choice(molde["pedidos"]).format(
+                ent=r.choice(nomes_da_lista(ent, lista)), p=destino,
+                cmp="", v="", tem="")
+            frase = " ".join(frase.split())
+            linq = molde["linq"].format(lista=lista, x=lista[0], P=destino,
+                                        corpo=", ".join(corpo))
+            chave = (frase, linq)
+            if chave in vistos:
+                continue
+            vistos.add(chave)
+            feitos[op_nome] += 1
+            pares.append({"pedido": frase, "linq": linq,
+                          "operacao": op_nome, "entidade": ent,
+                          "propriedade": None, "propriedade_filtro": None,
+                          "base": f"{op_nome}:{ent}:{destino}"})
+            continue
+
         frases = molde["pedidos_so_valor"] if so_valor else molde["pedidos"]
         frase_escolhida = r.choice(frases)
         pedido = frase_escolhida.format(
@@ -492,7 +917,51 @@ def gerar(proj, quantos=8000, semente=7):
                 pedido += pedido_extra
         pedido = " ".join(pedido.split())
 
+        # ── A SEGUNDA CONDIÇÃO ────────────────────────────────────────
+        #
+        # Só onde a operação aceita predicado (`Where`, `Count`, `Any`,
+        # `All`, `FirstOrDefault`): nelas a condição mora dentro da
+        # própria chamada, e duas condições viram `A && B` ali mesmo. Em
+        # `Sum` e `GroupBy` a condição já é um `Where` à parte — outro
+        # caminho, que continua como estava.
+        #
+        # Sem estes exemplos a rede nunca veria uma frase com duas
+        # exigências, e o `partir_condicoes` da inferência estaria
+        # resolvendo um problema que o treino nunca apresentou.
+        segunda, prop_segunda = "", None
+        if (molde.get("aceita_predicado") and not so_valor and lit
+                and r.random() < 0.22):
+            outras = [q for q in props
+                      if q.nome != p.nome and familia(q, enums) and not q.colecao]
+            if outras:
+                q = r.choice(outras)
+                fam2 = familia(q, enums)
+                if fam2 == "enum" and enums.get(q.tipo):
+                    v2 = r.choice(enums[q.tipo])
+                    lit2, falado2 = f"{q.tipo}.{v2}", em_portugues(v2)
+                elif fam2 == "numero":
+                    v2 = r.choice(VALORES_NUM)
+                    lit2, falado2 = q.literal(v2), str(v2)
+                elif fam2 == "texto":
+                    v2 = r.choice(["Tecnologia", "Ana Silva", "Infra"])
+                    lit2, falado2 = q.literal(v2), v2
+                else:
+                    lit2 = falado2 = None
+                if lit2:
+                    op2 = r.choice(["==", ">", "<"] if fam2 == "numero" else ["==", "!="])
+                    dito2 = r.choice(COMPARACOES[op2])
+                    juntor, palavra = r.choice([("&&", " e "), ("&&", " e tambem "),
+                                                ("||", " ou "), ("&&", " cujo ")])
+                    pedido += f"{palavra}{em_portugues(q.nome)} {dito2} {falado2}"
+                    pedido = " ".join(pedido.split())
+                    segunda = f" {juntor} {lista[0]}.{q.nome} {op2} {lit2}"
+                    prop_segunda = q.nome
+
         linq = molde["linq"].format(lista=lista, x=lista[0], P=p.nome, op=op, lit=lit)
+        if segunda:
+            # entra logo antes do parêntese que fecha o lambda
+            corte = linq.index(")", linq.index("=>"))
+            linq = linq[:corte] + segunda + linq[corte:]
         if linq_filtro:
             # `transacoes.Sum(...)` vira
             # `transacoes.Where(...).Sum(...)` — o filtro entra entre a
@@ -504,11 +973,16 @@ def gerar(proj, quantos=8000, semente=7):
             continue
         vistos.add(pedido)
         feitos[op_nome] += 1
+        # A SEGUNDA CONDIÇÃO É O ALVO DA CABEÇA DO FILTRO. Ela já existe e
+        # já sabe ler a segunda metade da frase — é exatamente o papel
+        # dela. Sem este rótulo, a `Mf` não veria estes exemplos e a
+        # segunda propriedade sairia de uma cabeça que nunca treinou nela.
+        filtro_rotulo = prop_f or prop_segunda
         pares.append({"pedido": pedido, "linq": linq, "operacao": op_nome,
                       "entidade": ent, "propriedade": p.nome,
-                      "propriedade_filtro": prop_f,
+                      "propriedade_filtro": filtro_rotulo,
                       "base": f"{op_nome}:{ent}:{p.nome}"
-                              + (f":+{prop_f}" if prop_f else "")})
+                              + (f":+{filtro_rotulo}" if filtro_rotulo else "")})
     return pares
 
 

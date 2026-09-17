@@ -971,7 +971,7 @@ class Sessao:
         # a meia-noite não tem boa-noite decente; o jeito é zoeira mansa
         if s is None:
             return f"Ainda de pé a essa hora, {nome}? Pode falar — o que você precisa?"
-        return f"{s}, {nome}! Estou por aqui. Me diz o que você precisa."
+        return f"{s} {nome}! como posso ajudar?"
 
     # ── cartões ──────────────────────────────────────────────────────
     def cartao(self, tipo, **campos):
@@ -1217,19 +1217,26 @@ class Sessao:
         cand = [x["nome"] for x in ((pensou or {}).get("candidatos") or [])]
         return bool(cand) and "criar_projeto" in cand[:3]
 
-    def receber(self, frase):
+    def receber(self, frase, anexo=None):
+        """`anexo` é a ficha do arquivo que virou esta frase, se houver.
+
+        A frase segue o caminho normal — é esse o ponto. O que o anexo
+        acrescenta é só o cartão saber que veio de um print ou de um
+        áudio, para a tela mostrar a miniatura junto em vez de só o texto
+        que ele virou.
+        """
         self.virar("pensando")
         try:
-            return self._receber(frase)
+            return self._receber(frase, anexo)
         except Exception:
             self.virar("erro")
             raise
         finally:
             self._assentar()
 
-    def _receber(self, frase):
+    def _receber(self, frase, anexo=None):
         self.ultima_mensagem = frase  # armazena para as funções de resposta
-        self.cartao("voce", texto=frase)
+        self.cartao("voce", texto=frase, **({"anexo": anexo} if anexo else {}))
 
         pensou = None
         if self.cerebro:

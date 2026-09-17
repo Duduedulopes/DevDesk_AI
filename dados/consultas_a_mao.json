@@ -149,6 +149,84 @@
      "linq": "transacoes.Sum(t => t.TaxaProcessamento)"
     }
    ]
+  },
+  {
+   "marca": "F",
+   "titulo": "6. OS 12 DESAFIOS DO Program.cs, palavra por palavra — a unica prova que nao saiu dos meus moldes",
+   "casos": [
+    {
+     "pedido": "Filtrar apenas transações com status 'Concluida' cujo valor seja superior a R$ 1.000,00.",
+     "linq": "transacoes.Where(t => t.Status == StatusTransacao.Concluida && t.Valor > 1000m).ToList()",
+     "precisa": "B",
+     "item": "1"
+    },
+    {
+     "pedido": "Projetar a lista de transações para 'TransacaoSeguraDto' formatando valores e datas.",
+     "linq": "transacoes.Select(t => new TransacaoSeguraDto { CodigoRastreio = t.CodigoRastreio, ClienteNome = t.ClienteNome, ValorFormatado = t.Valor.ToString(\"C\"), DataFormatada = t.DataHora.ToString(\"dd/MM/yyyy HH:mm\"), Categoria = t.Categoria, Tipo = t.Tipo.ToString(), Status = t.Status.ToString() }).ToList()",
+     "precisa": "C",
+     "item": "2"
+    },
+    {
+     "pedido": "Listar as transações ordenadas da mais recente para a mais antiga (DataHora desc)",
+     "linq": "transacoes.OrderByDescending(t => t.DataHora).ToList()",
+     "precisa": "hoje",
+     "item": "3"
+    },
+    {
+     "pedido": "Agrupar os logs por severidade, exibindo o total de ocorrências de cada nível",
+     "linq": "logs.GroupBy(l => l.Severidade).Select(g => new { Chave = g.Key, Total = g.Count() }).ToList()",
+     "precisa": "C",
+     "item": "4"
+    },
+    {
+     "pedido": "Verificar se existe alguma transação suspeita de fraude no dataset ou acima de R$ 15.000,00.",
+     "linq": "transacoes.Any(t => t.IsFraudeSuspeita == true || t.Valor > 15000m)",
+     "precisa": "B",
+     "item": "5"
+    },
+    {
+     "pedido": "Validar se todas as transações concluídas possuem código de autorização preenchido",
+     "linq": "transacoes.Where(t => t.Status == StatusTransacao.Concluida).All(t => t.CodigoAutorizacao != null)",
+     "precisa": "C",
+     "item": "6"
+    },
+    {
+     "pedido": "Calcular o montante total movimentado (Sum) em transações concluídas.",
+     "linq": "transacoes.Where(t => t.Status == StatusTransacao.Concluida).Sum(t => t.Valor)",
+     "precisa": "hoje",
+     "item": "7a"
+    },
+    {
+     "pedido": "Calcular o total movimentado na categoria 'Tecnologia'.",
+     "linq": "transacoes.Where(t => t.Categoria == \"Tecnologia\").Sum(t => t.Valor)",
+     "precisa": "hoje",
+     "item": "7b"
+    },
+    {
+     "pedido": "Contar (Count) quantas transações estão no status 'Pendente'.",
+     "linq": "transacoes.Count(t => t.Status == StatusTransacao.Pendente)",
+     "precisa": "hoje",
+     "item": "7c"
+    },
+    {
+     "pedido": "Calcular a soma de todas as taxas de processamento arrecadadas.",
+     "linq": "transacoes.Sum(t => t.TaxaProcessamento)",
+     "precisa": "hoje",
+     "item": "7d"
+    },
+    {
+     "pedido": "Buscar a primeira transação da cliente \"Ana Silva\".",
+     "linq": "transacoes.FirstOrDefault(t => t.ClienteNome == \"Ana Silva\")",
+     "precisa": "hoje",
+     "item": "8a"
+    },
+    {
+     "pedido": "Tentar buscar uma transação de um cliente inexistente (\"Cliente Inexistente\")",
+     "linq": "transacoes.FirstOrDefault(t => t.ClienteNome == \"Cliente Inexistente\")",
+     "precisa": "hoje",
+     "item": "8b"
+    }
+   ]
   }
  ]
 }

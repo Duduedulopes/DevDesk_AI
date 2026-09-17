@@ -448,6 +448,53 @@
      esticar junto e virar um retangulo alto */
   form>.centro{align-items:flex-end}
   form>.centro button.env{height:47px;flex:none}
+
+  /* ── ANEXAR E MICROFONE ──────────────────────────────────────────
+     Os dois acompanham o RODAPÉ da caixa (`align-items:flex-end` no
+     .centro), e não o meio dela: quando o texto cresce, o botão fica
+     onde a mão espera, alinhado com o Enviar. */
+  #anexar{position:relative;flex:none}
+  #bt-anexo, #bt-mic{
+    height:47px;min-width:47px;padding:0 11px;flex:none;cursor:pointer;
+    background:transparent;border:1px solid var(--borda);border-radius:0;
+    color:var(--tinta2);font:14px var(--mono);letter-spacing:.05em}
+  #bt-anexo:hover, #bt-mic:hover{border-color:var(--acento);color:var(--acento)}
+  #bt-anexo .seta{font-size:10px;opacity:.7}
+  #bt-anexo[aria-expanded="true"]{border-color:var(--acento);color:var(--acento)}
+
+  /* o menu sobe, porque a caixa mora no rodapé da janela — para baixo
+     não há para onde abrir */
+  #menu-anexo{position:absolute;bottom:calc(100% + 6px);left:0;z-index:40;
+    min-width:150px;background:var(--painel);border:1px solid var(--borda);
+    box-shadow:0 -8px 30px #0008;display:flex;flex-direction:column}
+  #menu-anexo button{background:none;border:0;color:var(--tinta);cursor:pointer;
+    font:13px var(--mono);text-align:left;padding:9px 14px}
+  #menu-anexo button:hover{background:var(--borda2);color:var(--acento)}
+
+  /* GRAVANDO: o botão vira quadrado e pisca. Vermelho é a única cor
+     fora da paleta verde no rodapé inteiro — de propósito: microfone
+     ligado é a coisa mais importante da tela enquanto está ligado. */
+  #bt-mic svg{display:block}
+  #bt-mic.gravando{border-color:#e05252;color:#e05252;animation:pulsa 1.1s infinite}
+  #bt-mic:disabled{opacity:.45;cursor:default}
+  #bt-mic:disabled:hover{border-color:var(--borda);color:var(--tinta2)}
+
+  /* as fichas do que vai junto: pequenas, com um ✕ para tirar */
+  #pendentes{display:flex;flex-wrap:wrap;gap:6px;padding:8px 0 0 58px}
+  #pendentes .ficha{display:flex;align-items:center;gap:8px;
+    border:1px solid var(--borda);padding:3px 6px 3px 9px;
+    font:11.5px var(--mono);color:var(--tinta2);letter-spacing:.04em}
+  #pendentes .ficha b{font-weight:400;color:var(--tinta3)}
+  #pendentes .ficha button{background:none;border:0;cursor:pointer;
+    color:var(--tinta3);font:13px var(--mono);padding:0 3px;line-height:1}
+  #pendentes .ficha button:hover{color:var(--erro)}
+
+  /* e no cartão da conversa, a linha que diz de onde a mensagem veio */
+  .cartao .veio{margin-top:7px;font:11.5px var(--mono);color:var(--tinta3);
+    letter-spacing:.04em}
+  @keyframes pulsa{0%,100%{opacity:1}50%{opacity:.45}}
+  #bt-mic .tempo{font-size:11px;margin-left:6px}
+  #bt-anexo:disabled, #bt-mic:disabled{opacity:.4;cursor:default}
   button.env{background:var(--acento);border:0;border-radius:8px;padding:0 17px;
              color:var(--codigo);font-weight:600;cursor:pointer}
   /* NOWRAP E O CAMINHO ENCOLHE. Com o painel da direita aberto a coluna
@@ -886,10 +933,24 @@
   <form id="f"><div id="escolhas" hidden></div><div id="barra" hidden></div>
     <div id="puxa" title="arraste para cima ou para baixo para mudar a altura da caixa"></div>
     <div class="centro">
+    <div id="anexar">
+      <button type="button" id="bt-anexo" title="anexar imagem, vídeo ou documento"
+              aria-haspopup="true" aria-expanded="false">+ <span class="seta">▾</span></button>
+      <div id="menu-anexo" hidden role="menu">
+        <button type="button" data-tipo="imagem">imagem</button>
+        <button type="button" data-tipo="video">vídeo</button>
+        <button type="button" data-tipo="documento">documento</button>
+      </div>
+    </div>
     <textarea id="e" rows="1" autocomplete="off" autofocus spellcheck="false"
               placeholder="Descreva o problema com suas palavras — ou digite / para os comandos"></textarea>
     <button class="env">Enviar</button>
-  </div></form>
+    <button type="button" id="bt-mic" aria-label="gravar áudio"
+            title="gravar áudio (clique para começar)"><svg viewBox="0 0 24 24" width="17" height="17" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" aria-hidden="true"><rect x="9" y="2.8" width="6" height="10.4" rx="3"/><path d="M5.4 11a6.6 6.6 0 0 0 13.2 0"/><path d="M12 17.6V21"/><path d="M8.6 21h6.8"/></svg></button>
+  </div>
+  <!-- O QUE VAI JUNTO com a próxima mensagem. Fica ABAIXO da caixa e não
+       dentro dela: o texto é seu e editável, a ficha do arquivo não é. -->
+  <div id="pendentes" hidden></div></form>
   <div class="status">
     <span class="ponto" id="ponto">●</span>
     <span id="estado-diz"></span>
@@ -1001,7 +1062,15 @@ function desenhar(c){
   if (c.resolvido) d.classList.add("resolvido");
 
   if (c.tipo === "voce")
-    d.innerHTML = `<div class="voce">${esc(c.texto)}</div>`;
+    // A LINHA DO ANEXO EXISTE PORQUE A FICHA EXISTIA E NINGUÉM DESENHAVA.
+    // Sem ela, "o cartão mostra que veio do microfone" era só um campo
+    // guardado no JSON — verdade no disco e mentira na tela.
+    d.innerHTML = `<div class="voce">${esc(c.texto)}</div>` +
+      ((c.anexo || []).length
+        ? `<div class="veio">${(c.anexo || []).map(a =>
+             `▸ ${esc(COMO_SE_CHAMA[a.familia] || "arquivo")} · ${esc(semCarimbo(a.nome))}`
+           ).join("<br>")}</div>`
+        : "");
 
   else if (c.tipo === "ela")
     d.innerHTML = `<div class="ela">${negrito(c.texto)}</div>`;
@@ -2114,6 +2183,232 @@ function pensandoNaTela(ligado, texto){
   }
 }
 
+// ══════════════════════════════════════════════════════════════════════
+//  ANEXOS: o clipe e o microfone
+// ══════════════════════════════════════════════════════════════════════
+const LIMITE_ANEXO = 25 * 1024 * 1024;
+const ACEITA = {
+  imagem:    "image/*",
+  video:     "video/*",
+  documento: ".txt,.md,.log,.csv,.json,.xml,.yml,.yaml,.py,.cs,.js,.ts,.html," +
+             ".css,.sql,.sh,.ps1,.java,.cpp,.c,.h,.go,.rb,.php,.ini,.cfg,.pdf,.docx",
+};
+
+/** Manda o arquivo e deixa a conversa reagir — o MESMO caminho do texto.
+ *
+ *  O que a tela faz depois de mandar é igualzinho ao `onsubmit`: mostra o
+ *  "pensando", espera, e atualiza. Ter dois jeitos de mandar coisa para a
+ *  mesma conversa, cada um atualizando a tela à sua maneira, é como as
+ *  telas começam a divergir do que o servidor realmente tem.
+ */
+async function lerAnexo(arq){
+  if (!arq) return;
+  if (arq.size > LIMITE_ANEXO){
+    // MEDIR AQUI TAMBÉM, e não só no servidor: subir 40 MB por localhost
+    // para ouvir "grande demais" é gastar o tempo da pessoa à toa.
+    avisoNaTela(`${arq.name} tem ${(arq.size/1048576).toFixed(1)} MB — o limite é 25 MB.`);
+    return;
+  }
+  // A CAIXA NÃO É ESVAZIADA. O que a pessoa já escreveu fica; o texto do
+  // arquivo entra no fim. Limpar aqui apagaria o que ela digitou enquanto
+  // o áudio subia — e isso acontece o tempo todo.
+  lendoAnexo(true, arq.name);
+  try {
+    const uri = await new Promise((ok, erro) => {
+      const ler = new FileReader();
+      ler.onload = e => ok(e.target.result);
+      ler.onerror = () => erro(new Error("não consegui ler o arquivo"));
+      ler.readAsDataURL(arq);
+    });
+    const r = await fetch("/api/anexo", {method:"POST",
+      headers:{"Content-Type":"application/json"},
+      body: JSON.stringify({nome: arq.name, dados: uri})});
+    const d = await r.json().catch(() => ({}));
+    if (!r.ok){
+      avisoNaTela(d.porque || `o servidor recusou o arquivo (${r.status}).`);
+    } else {
+      porNaCaixa(d.texto || "");
+      if (d.anexo){ PENDENTES.push(d.anexo); pintarPendentes(); }
+    }
+  } catch (e){
+    avisoNaTela("não consegui ler o arquivo: " + e.message);
+  }
+  lendoAnexo(false);
+}
+
+// ── o texto do arquivo entrando na caixa ──────────────────────────────
+//
+// EMENDA, não substitui. Se já havia texto, o do arquivo entra depois de
+// uma linha em branco — é o que a pessoa faria à mão. E o cursor fica no
+// FIM, porque a frase quase sempre precisa de um complemento ("...e o
+// erro só acontece quando o pedido está vazio").
+function porNaCaixa(texto){
+  if (!texto) return;
+  const havia = CAIXA.value.trimEnd();
+  CAIXA.value = havia ? havia + "\n\n" + texto : texto;
+  caixaCresce();
+  CAIXA.focus();
+  CAIXA.selectionStart = CAIXA.selectionEnd = CAIXA.value.length;
+  CAIXA.scrollTop = CAIXA.scrollHeight;
+}
+
+// ── "estou lendo" ─────────────────────────────────────────────────────
+//
+// NÃO é o `pensandoNaTela`: aquele é ELA pensando, e some quando a
+// resposta chega. Aqui ninguém foi perguntado ainda — o arquivo está
+// sendo lido, e a única coisa que precisa parar é o botão, para não
+// mandar dois de uma vez.
+const PLACEHOLDER = CAIXA.placeholder;   // guardado antes de ser trocado
+function lendoAnexo(lendo, nome){
+  BTMIC.disabled = lendo;
+  BTANEXO.disabled = lendo;
+  CAIXA.placeholder = lendo ? `lendo ${nome}…` : PLACEHOLDER;
+}
+
+// ── as fichas do que vai junto ────────────────────────────────────────
+const PENDENTES = [];
+const PEND = document.getElementById("pendentes");
+const COMO_SE_CHAMA = {imagem: "print", audio: "áudio", video: "vídeo",
+                       texto: "arquivo", outro: "arquivo"};
+
+// O CARIMBO DE HORA É DO DISCO, NÃO DA TELA. Ele existe para dois prints
+// chamados `Captura.png` não se sobrescreverem; quem lê quer reconhecer o
+// arquivo, e `20260914-200912-tela.mp4` atrapalha isso.
+const semCarimbo = n => String(n || "").replace(/^\d{8}-\d{6}-/, "");
+
+function pintarPendentes(){
+  PEND.hidden = !PENDENTES.length;
+  PEND.innerHTML = PENDENTES.map((a, i) =>
+    `<span class="ficha"><b>${esc(COMO_SE_CHAMA[a.familia] || "arquivo")}</b> ` +
+    `${esc(semCarimbo(a.nome))}<button type="button" data-i="${i}" ` +
+    `title="tirar — o arquivo continua guardado">✕</button></span>`).join("");
+}
+PEND.addEventListener("click", e => {
+  const b = e.target.closest("button"); if (!b) return;
+  // TIRAR A FICHA NÃO APAGA O ARQUIVO, e o title diz isso. Ele já está em
+  // `dados/anexos` desde que foi lido — o que sai é o vínculo com esta
+  // mensagem, não o arquivo do disco.
+  PENDENTES.splice(+b.dataset.i, 1); pintarPendentes();
+});
+
+function avisoNaTela(texto){
+  pensandoNaTela(false);
+  fetch("/api/mensagem", {method:"POST", headers:{"Content-Type":"application/json"},
+                          body: JSON.stringify({texto: "> " + texto})}).catch(() => {});
+  console.warn("[anexo]", texto);
+}
+
+function escolherArquivo(tipo){
+  const i = document.createElement("input");
+  i.type = "file";
+  i.accept = ACEITA[tipo] || "";
+  i.onchange = () => lerAnexo(i.files[0]);
+  i.click();
+}
+
+// ── o menu do clipe ───────────────────────────────────────────────────
+const BTANEXO = document.getElementById("bt-anexo");
+const MENUANEXO = document.getElementById("menu-anexo");
+
+function menuAnexo(abrir){
+  MENUANEXO.hidden = !abrir;
+  BTANEXO.setAttribute("aria-expanded", abrir ? "true" : "false");
+}
+BTANEXO.addEventListener("click", ev => {
+  ev.stopPropagation();
+  menuAnexo(MENUANEXO.hidden);
+});
+MENUANEXO.querySelectorAll("button").forEach(b => {
+  b.addEventListener("click", () => { menuAnexo(false); escolherArquivo(b.dataset.tipo); });
+});
+// clicar fora fecha; Esc também. Um menu que só fecha clicando nele de
+// novo é um menu que fica aberto atrás da conversa.
+document.addEventListener("click", () => menuAnexo(false));
+document.addEventListener("keydown", e => { if (e.key === "Escape") menuAnexo(false); });
+
+// ── ARRASTAR E SOLTAR na caixa de texto ───────────────────────────────
+// De graça: o navegador já entrega o arquivo, e arrastar o print para a
+// janela é mais natural que caçar o botão.
+CAIXA.addEventListener("dragover", e => {
+  e.preventDefault(); CAIXA.style.borderColor = "var(--acento)";
+});
+CAIXA.addEventListener("dragleave", () => { CAIXA.style.borderColor = ""; });
+CAIXA.addEventListener("drop", e => {
+  e.preventDefault(); CAIXA.style.borderColor = "";
+  if (e.dataTransfer.files && e.dataTransfer.files[0]) lerAnexo(e.dataTransfer.files[0]);
+});
+// colar print direto do Ctrl+PrintScreen
+CAIXA.addEventListener("paste", e => {
+  const it = [...(e.clipboardData?.items || [])].find(x => x.kind === "file");
+  if (it){ e.preventDefault(); lerAnexo(it.getAsFile()); }
+});
+
+// ── O MICROFONE ───────────────────────────────────────────────────────
+//
+// `MediaRecorder` grava em webm/opus, e o `faster-whisper` lê esse
+// formato pelo PyAV que vem junto com ele — conferido antes de escrever
+// este botão, decodificando um webm/opus de verdade. Sem ffmpeg do
+// sistema, sem conversão no meio.
+const BTMIC = document.getElementById("bt-mic");
+let gravador = null, pedacos = [], relogio = null, comecou = 0;
+
+// O DESENHO VAI AQUI DENTRO, e não num arquivo .svg nem numa fonte de
+// ícones: o painel é um arquivo só que abre sem internet. `currentColor`
+// faz o traço seguir a cor do botão — quando ele fica vermelho gravando,
+// o microfone fica junto, sem uma segunda imagem.
+const DESENHO_MIC = '<svg viewBox="0 0 24 24" width="17" height="17" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" aria-hidden="true"><rect x="9" y="2.8" width="6" height="10.4" rx="3"/><path d="M5.4 11a6.6 6.6 0 0 0 13.2 0"/><path d="M12 17.6V21"/><path d="M8.6 21h6.8"/></svg>';
+const DESENHO_PARE = '<svg viewBox="0 0 24 24" width="12" height="12" aria-hidden="true"><rect x="4" y="4" width="16" height="16" rx="2" fill="currentColor"/></svg>';
+
+function pintarMic(gravando){
+  BTMIC.classList.toggle("gravando", gravando);
+  BTMIC.title = gravando ? "clique para parar (o texto vai para a caixa)"
+                         : "gravar áudio (clique para começar)";
+  if (!gravando) BTMIC.innerHTML = DESENHO_MIC;
+}
+
+function tiquetaque(){
+  const s = Math.floor((Date.now() - comecou) / 1000);
+  BTMIC.innerHTML = DESENHO_PARE + ' <span class="tempo">' +
+    String(Math.floor(s/60)).padStart(2,"0") + ":" + String(s%60).padStart(2,"0") + "</span>";
+}
+
+async function gravarAudio(){
+  if (gravador && gravador.state === "recording"){ gravador.stop(); return; }
+  if (!navigator.mediaDevices?.getUserMedia){
+    avisoNaTela("este navegador não deixa gravar áudio.");
+    return;
+  }
+  let trilha;
+  try {
+    trilha = await navigator.mediaDevices.getUserMedia({audio: true});
+  } catch (e){
+    // NEGAR O MICROFONE É UMA RESPOSTA, e ela precisa aparecer. Sem este
+    // ramo o botão pisca uma vez e não acontece nada — e a pessoa fica
+    // achando que o programa travou.
+    avisoNaTela("não consegui abrir o microfone (" + e.name + "). " +
+                "Se você negou a permissão, dá para liberar no cadeado da barra de endereço.");
+    return;
+  }
+  pedacos = [];
+  gravador = new MediaRecorder(trilha);
+  gravador.ondataavailable = e => { if (e.data.size) pedacos.push(e.data); };
+  gravador.onstop = () => {
+    clearInterval(relogio); pintarMic(false);
+    trilha.getTracks().forEach(t => t.stop());   // apaga a luz do microfone
+    const tipo = gravador.mimeType || "audio/webm";
+    const bloco = new Blob(pedacos, {type: tipo});
+    const ext = tipo.includes("ogg") ? "ogg" : tipo.includes("mp4") ? "m4a" : "webm";
+    if (bloco.size < 1200){ avisoNaTela("a gravação saiu vazia."); return; }
+    // SEM CARIMBO DE HORA AQUI. O `anexos.guardar` já põe um na frente ao
+    // gravar — juntando os dois saía `20260914-200904-gravacao-200904.webm`.
+    lerAnexo(new File([bloco], `gravacao.${ext}`, {type: tipo}));
+  };
+  gravador.start();
+  comecou = Date.now(); pintarMic(true); tiquetaque();
+  relogio = setInterval(tiquetaque, 500);
+}
+BTMIC.addEventListener("click", gravarAudio);
+
 document.getElementById("f").onsubmit = async ev => {
   ev.preventDefault();
   barraFecha();
@@ -2127,8 +2422,14 @@ document.getElementById("f").onsubmit = async ev => {
   CAIXA.value = ""; caixaCresce();
   pensandoNaTela(true, texto);
   const t0 = performance.now();
+  // AS FICHAS VÃO JUNTO E SÃO LIMPAS ANTES DA RESPOSTA CHEGAR. Se ficassem
+  // esperando o `await`, um segundo Enviar rápido mandaria o mesmo áudio
+  // duas vezes.
+  const vaiJunto = PENDENTES.splice(0);
+  pintarPendentes();
   await fetch("/api/mensagem", {method:"POST",
-    headers:{"Content-Type":"application/json"}, body:JSON.stringify({texto})});
+    headers:{"Content-Type":"application/json"},
+    body:JSON.stringify({texto, anexo: vaiJunto})});
   // Se ela respondeu antes do tempo, a tela completa a diferença. Se
   // demorou mais que isso — um comando de verdade rodando — não espera
   // mais nada: o atraso é do trabalho, e trabalho não se disfarça.

@@ -65,3 +65,6 @@ dados/audio/
 *.tmp
 *.bak
 *.swp
+# conversas e anexos do chat: ficam so na maquina
+dados/conversas/
+dados/anexos/

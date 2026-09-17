@@ -317,12 +317,21 @@ class Decisor:
         du += self.W3 @ dh2
 
         # casamento da propriedade AGREGADA — sobre a sua metade da frase
+        #
+        # `k_certo is None` é o pedido que NÃO TEM propriedade de origem:
+        # `Select(t => new TransacaoSeguraDto { ... })` projeta a classe
+        # inteira, e o corpo do `new` sai de comparar nomes, não da rede.
+        # Forçar uma propriedade aí ensinaria um par que ninguém pediu —
+        # é o mesmo motivo do `if k_filtro is not None` logo abaixo, e a
+        # mesma regra: perda só existe onde existe resposta certa.
         vs = np.array([self.resumo(c) for c in ids_cands])       # (K, d)
-        q = self.M.T @ ua                                         # (d,)
-        p3, dz3, dq, dvs = self._casar(vs, q, k_certo)
-        perda += -math.log(max(p3[k_certo], 1e-15))
-        gM = np.outer(ua, dq)                                     # M.T@ua → dM = ua ⊗ dq
-        dua += self.M @ dq
+        gM = None
+        if k_certo is not None:
+            q = self.M.T @ ua                                     # (d,)
+            p3, dz3, dq, dvs = self._casar(vs, q, k_certo)
+            perda += -math.log(max(p3[k_certo], 1e-15))
+            gM = np.outer(ua, dq)                                 # M.T@ua → dM = ua ⊗ dq
+            dua += self.M @ dq
 
         # casamento da LISTA — a cabeça que faltava treinar
         vl = np.array([self.resumo(c) for c in ids_listas])
@@ -359,11 +368,13 @@ class Decisor:
         self.W1 -= taxa * gW1; self.b1 -= taxa * gb1
         self.W4 -= taxa * gW4; self.b4 -= taxa * gb4
         self.W3 -= taxa * gW3; self.b3 -= taxa * gb3
-        self.M -= taxa * gM
+        if gM is not None:
+            self.M -= taxa * gM
         np.add.at(self.E, np.asarray(ids_pedido), -taxa * du / len(ids_pedido))
         np.add.at(self.E, np.asarray(ids_agreg), -taxa * dua / len(ids_agreg))
-        for j, c in enumerate(ids_cands):
-            np.add.at(self.E, np.asarray(c), -taxa * dvs[j] / len(c))
+        if gM is not None:
+            for j, c in enumerate(ids_cands):
+                np.add.at(self.E, np.asarray(c), -taxa * dvs[j] / len(c))
         return perda
 
 

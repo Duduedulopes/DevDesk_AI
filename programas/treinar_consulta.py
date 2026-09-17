@@ -123,7 +123,12 @@ juiz = Juiz(arg.projeto, proj)
 
 
 def julgar(marca, casos):
-    escritas = [(f"{marca}{i}", consultor.montar(p)) for i, (p, _) in enumerate(casos)]
+    # `montar` DEVOLVE None quando ela não sabe, e isso é resposta — não é
+    # defeito. O juiz tratava como texto e estourava; agora o vazio vira
+    # uma linha que não compila e não é igual a nada, que é exatamente o
+    # que "não sei" vale numa prova.
+    escritas = [(f"{marca}{i}", consultor.montar(p) or "/* nao sei */")
+                for i, (p, _) in enumerate(casos)]
     vered = juiz.compilar(escritas)
     comp = cert = 0
     linhas = []

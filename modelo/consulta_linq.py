@@ -74,9 +74,11 @@ import numpy as np
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 from modelo.decisor_linq import Decisor, Peneira, OPS, CMPS   # noqa: E402
 from modelo.leitor_csharp import ProjetoCSharp                # noqa: E402
-from modelo.moldes_linq import (OPERACOES, achar_comparacao,  # noqa: E402
-                                em_portugues, familia,
-                                metades)
+from modelo.moldes_linq import (OPERACOES, achar_comparacao, cabe,  # noqa: E402
+                                descascar, dtos_de, em_portugues, familia,
+                                mapear_dto, metades, numero_da_frase,
+                                partir_condicoes, partir_no_verbo,
+                                pede_preenchido, valor_citado)
 
 
 def _plano(texto):
@@ -131,6 +133,15 @@ class Consultor:
         # está dentro de `IsFraudeSuspeita`; "transacoes" é a lista. Sem
         # esta lista, o parentesco por trigrama pegava essas palavras e
         # inventava um filtro que a frase nunca pediu.
+        # O que, NESTE projeto, denuncia que um pedaço de frase é uma
+        # condição: o nome de um valor de enum ou o nome de uma
+        # propriedade. Usado só para decidir ONDE PARTIR uma frase de duas
+        # condições — nunca para escolher a resposta.
+        self.palavras_de_condicao = (
+            {w for vs in self.proj.enums.values() for v in vs
+             for w in _plano(em_portugues(v)).split() if len(w) > 3}
+            | {w for e in self.entidades for pr, _ in self.cands[e]
+               for w in _plano(em_portugues(pr.nome)).split() if len(w) > 3})
         self.palavras_de_nome = (
             {w for e in self.entidades for pr, _ in self.cands[e]
              for w in _plano(em_portugues(pr.nome)).split()}
@@ -147,11 +158,11 @@ class Consultor:
         _, p_op = self.rede.operacao(u)
         op = OPS[int(p_op.argmax())]
         ent, prop = self.lista_e_propriedade(
-            u, self.rede.resumo(self.peneira.ids(metades(pedido, op)[0])))
+            u, self.rede.resumo(self.peneira.ids(metades(pedido, op)[0])), op=op)
         _, p_cmp = self.rede.comparacao(u)
         return op, ent, prop, CMPS[int(p_cmp.argmax())]
 
-    def par_de_propriedades(self, ua, uf, ent):
+    def par_de_propriedades(self, ua, uf, ent, op=None):
         """A propriedade AGREGADA e a do FILTRO, escolhidas como um par só.
 
         As duas cabeças leem o MESMO pedido e têm de apontar para
@@ -172,6 +183,21 @@ class Consultor:
         sa = V @ (self.rede.M.T @ ua)      # a metade de antes do conector
         sf = V @ (self.rede.Mf.T @ uf)     # a metade de depois
         # o melhor filtro para cada agregada é o melhor que não é ela
+        # A MESMA REGRA DE TIPO DA OUTRA CABEÇA, e este era o buraco.
+        #
+        # `lista_e_propriedade` já respeitava a operação, mas quando o
+        # pedido tem filtro quem escolhe é AQUI — e aqui não respeitava.
+        # Medido: `Where(...).Sum(t => t.Tipo)` (enum) e
+        # `Where(...).Sum(t => t.IsFraudeSuspeita)` (bool). Nenhum dos
+        # dois compila, e `cabe("somar", Tipo)` já dizia False — a regra
+        # existia e este caminho passava por fora dela.
+        #
+        # Só a AGREGADA é restrita: a do filtro compara com um valor e
+        # qualquer tipo comparável serve.
+        if op is not None:
+            pode = np.array([cabe(op, pr, self.proj.enums) for pr, _ in cands])
+            if pode.any():
+                sa = np.where(pode, sa, -1e18)
         ordem_f = np.argsort(-sf)
         melhor, alvo = (None, None), -1e18
         for i in range(len(cands)):
@@ -180,7 +206,7 @@ class Consultor:
                 alvo, melhor = sa[i] + sf[j], (cands[i][0], cands[j][0])
         return melhor
 
-    def lista_e_propriedade(self, u, ua=None):
+    def lista_e_propriedade(self, u, ua=None, op=None):
         """AS DUAS JUNTAS, e não uma depois da outra.
 
         Escolher a lista primeiro e a propriedade dentro dela deixa um erro
@@ -206,6 +232,16 @@ class Consultor:
                 continue
             nota_lista = float(self.rede.unitario(self._v_lista[i:i + 1])[0] @ ql)
             s = self.rede.unitario(self._v_prop[e]) @ q
+            # A OPERAÇÃO MANDA NO QUE PODE SER ESCOLHIDO. `Sum` de uma
+            # string não é resposta ruim, é erro de compilação — e o
+            # corpus já ensinava isso. Aqui a mesma regra passa a valer
+            # na hora de responder (`cabe`, em moldes_linq).
+            if op is not None:
+                pode = np.array([cabe(op, pr, self.proj.enums)
+                                 for pr, _ in self.cands[e]])
+                if not pode.any():
+                    continue          # esta classe não serve para esta operação
+                s = np.where(pode, s, -1e18)
             k = int(s.argmax())
             if s[k] + nota_lista > alvo:
                 alvo, melhor = s[k] + nota_lista, (e, self.cands[e][k][0])
@@ -320,8 +356,18 @@ class Consultor:
         if not cands:
             return None
         if op_dito is None:                       # "…transações concluídas"
-            _, pf, literal = self.pelo_valor(pedido)
-            if pf is None or pf.nome == prop_agregada.nome:
+            # A CLASSE TEM DE SER A MESMA, e este `e2` estava sendo jogado
+            # fora. `pelo_valor` procura o valor em TODO o projeto, e
+            # devolvia uma propriedade de outra classe:
+            #
+            #   transacoes.Where(t => t.Severidade == SeveridadeLog.Error)
+            #              .Sum(t => t.TaxaProcessamento)
+            #
+            # `Severidade` é de `LogSistema`. Não compila, nunca vai
+            # compilar, e o juiz só pegaria depois de escrito.
+            e2, pf, literal = self.pelo_valor(pedido)
+            if (pf is None or e2 != ent or pf.nome == prop_agregada.nome
+                    or not any(pr.nome == pf.nome for pr, _ in cands)):
                 return None
             return f"{pf.nome} == {literal}"
         pf = prop_f
@@ -348,7 +394,16 @@ class Consultor:
         # Procurando só pela frase do operador escolhido, quando a rede
         # errava o operador o valor virava A FRASE INTEIRA:
         #   ClienteNome != "primeira transacao onde cliente nome igual a..."
-        resto = achar_comparacao(pedido)[1] or pedido
+        # O QUE VEM DEPOIS DO OPERADOR; na falta dele, O QUE ESTÁ ENTRE
+        # ASPAS; e só então a frase inteira.
+        #
+        # O meio deste caminho faltava, e custou uma regressão que eu
+        # mesmo causei: ao fazer as aspas bloquearem o palpite de enum,
+        # "quantas transações estão no status 'Pendente'" passou a
+        # comparar a FRASE TODA com os nomes dos valores do enum — e
+        # `Concluida` ganhou de `Pendente` por causa do resto da frase.
+        # A palavra entre aspas É a resposta; o resto é contexto.
+        resto = achar_comparacao(pedido)[1] or valor_citado(pedido) or pedido
         fam = familia(prop, self.proj.enums)
         if fam == "enum":
             # AQUI A SEMELHANÇA É CRUA, sem a matriz aprendida — e é de
@@ -381,20 +436,221 @@ class Consultor:
             nota = self.rede.unitario(vs) @ (u / (np.linalg.norm(u) + 1e-12))
             return f"{prop.tipo}.{vals[int(nota.argmax())]}"
         if fam == "numero":
-            m = re.search(r"-?\d+(?:[.,]\d+)?", resto) or re.search(r"-?\d+", pedido)
-            return prop.literal(m.group(0).replace(",", ".") if m else 0)
+            # BRASILEIRO. `R$ 1.000,00` é mil, não um — e a conta antiga
+            # entregava `1.000m` ao C#, que compila e vale 1.
+            n = numero_da_frase(resto) or numero_da_frase(pedido)
+            return prop.literal(n if n is not None else 0)
         if fam == "bool":
             return "true" if not re.search(r"\bn[aã]o\b|\bfalse\b", resto) else "false"
         if fam == "texto":
-            return prop.literal(resto.strip(" ?.!") or "")
+            # O QUE ESTÁ ENTRE ASPAS GANHA DE TUDO. O enunciado escreve o
+            # valor com todas as letras — cliente "Ana Silva", categoria
+            # 'Tecnologia'. Sem esta linha o literal virava a pergunta
+            # inteira, porque `resto` é "tudo que vem depois do operador"
+            # e numa frase sem operador isso é a frase.
+            citado = valor_citado(pedido)
+            if citado:
+                return prop.literal(citado)
+            sobra = resto.strip(" ?.!")
+            # UM LITERAL DE TEXTO NUNCA É UMA ORAÇÃO. Se o que sobrou tem
+            # cara de frase, é porque não havia valor na frase — e vazio
+            # é mais honesto que a pergunta copiada para dentro do código.
+            if len(sobra) > 40 or len(sobra.split()) > 5:
+                return prop.literal("")
+            return prop.literal(sobra)
         return prop.literal(resto.strip())
+
+    # ── duas condições ────────────────────────────────────────────────
+    def _uma_condicao(self, texto, ent, op, evitar=None, filtro=False):
+        """`(propriedade, sinal, literal)` de UM pedaço de frase.
+
+        É a mesma pergunta que a rede já responde bem — "nesta frase, qual
+        propriedade?" — feita sobre um pedaço menor. Nada aqui é cabeça
+        nova: é a `M` de sempre lendo meia frase em vez de uma inteira.
+        """
+        cands = self.cands[ent]
+        if not cands:
+            return None
+        u = self.rede.resumo(self.peneira.ids(texto))
+        # A PRIMEIRA CONDIÇÃO É A `M`, A SEGUNDA É A `Mf` — as mesmas duas
+        # matrizes que o treino usa para a metade de antes e a de depois.
+        # Usar a `M` nas duas seria perguntar a mesma coisa duas vezes.
+        matriz = self.rede.Mf if filtro else self.rede.M
+        s = self.rede.unitario(self._v_prop[ent]) @ (matriz.T @ u)
+        # a propriedade do outro pedaço não pode ser esta: "status X e
+        # valor Y" são duas propriedades, e repetir uma perde a outra
+        for i, (pr, _) in enumerate(cands):
+            if evitar is not None and pr.nome == evitar.nome:
+                s[i] = -1e18
+        prop = cands[int(s.argmax())][0]
+        cmp_ = achar_comparacao(texto)[0]
+        if cmp_ is None:
+            # sem operador escrito: o valor por extenso manda ("suspeita de
+            # fraude", "concluida"), e na falta dele é igualdade
+            e2, p2, lit2 = self.pelo_valor(texto)
+            if p2 is not None and (evitar is None or p2.nome != evitar.nome):
+                return p2, "==", lit2
+            cmp_ = "=="
+        return prop, cmp_, self.valor_de(texto, prop, cmp_)
+
+    def _duas_condicoes(self, pedido, ent, op):
+        """`t.Status == X && t.Valor > Y` — ou None quando só há uma.
+
+        POR QUE ISTO NÃO É UMA CABEÇA NOVA
+
+        Porque a pergunta difícil já estava resolvida. O que faltava era
+        um lugar na SAÍDA para a segunda resposta: todo molde tinha um
+        `{lit}` só, e a rede era obrigada a escolher entre as duas
+        condições que a frase pedia. Não era erro de treino — era um
+        pedido que o formato não sabia escrever.
+
+        Onde a frase se parte está escrito nela ("cujo", " e ", " ou "),
+        como já estava para separar a agregação do filtro.
+        """
+        partes, juntor = partir_condicoes(pedido, self.palavras_de_condicao)
+        if len(partes) < 2:
+            return None
+        x = self.lista_de[ent][0]
+        primeira = self._uma_condicao(partes[0], ent, op)
+        if primeira is None:
+            return None
+        segunda = self._uma_condicao(partes[1], ent, op, evitar=primeira[0],
+                                     filtro=True)
+        if segunda is None:
+            return None
+        pedacos = []
+        for prop, cmp_, lit in (primeira, segunda):
+            if cmp_ == "nenhuma" or lit is None or lit == '""':
+                return None      # meia condição não é resposta
+            pedacos.append(f"{x}.{prop.nome} {cmp_} {lit}")
+        return f" {juntor} ".join(pedacos)
+
+    # ── Where + All / Where + Any ─────────────────────────────────────
+    def _restricao_e_predicado(self, pedido, ent, op):
+        """`transacoes.Where(concluídas).All(tem código)` — ou None.
+
+        A DIFERENÇA QUE ISTO GUARDA NÃO É DE ESTILO, É DE SENTIDO:
+
+            All(t => t.Status == Concluida && t.Codigo != null)
+                "toda transação é concluída E tem código"
+            Where(t => t.Status == Concluida).All(t => t.Codigo != null)
+                "toda transação concluída tem código"
+
+        A primeira é falsa assim que existir uma transação pendente. O
+        enunciado pede a segunda, e as duas frases em português diferem
+        por uma palavra: o verbo. "transações CONCLUÍDAS POSSUEM código"
+        põe a restrição no substantivo e o que se valida depois do verbo.
+        """
+        quem, oque = partir_no_verbo(pedido)
+        if not oque:
+            return None
+        # a restrição: o valor dito por extenso do lado de "quem"
+        _, prop_q, lit_q = self.pelo_valor(quem)
+        if prop_q is None:
+            return None
+        # o predicado: a propriedade do outro lado
+        cands = self.cands[ent]
+        u = self.rede.resumo(self.peneira.ids(oque))
+        s = self.rede.unitario(self._v_prop[ent]) @ (self.rede.Mf.T @ u)
+        for i, (pr, _) in enumerate(cands):
+            if pr.nome == prop_q.nome:
+                s[i] = -1e18
+        prop_o = cands[int(s.argmax())][0]
+        if pede_preenchido(oque):
+            cond = f"{{x}}.{prop_o.nome} != null"
+        else:
+            cmp_o = achar_comparacao(oque)[0] or "=="
+            lit_o = self.valor_de(oque, prop_o, cmp_o)
+            if not lit_o or lit_o == '""':
+                return None
+            cond = f"{{x}}.{prop_o.nome} {cmp_o} {lit_o}"
+        lista = self.lista_de[ent]
+        x = lista[0]
+        chamada = OPERACOES[op]["linq"].split("{lista}.")[1].split("(")[0]
+        return (f"{lista}.Where({x} => {x}.{prop_q.nome} == {lit_q})"
+                f".{chamada}({x} => {cond.format(x=x)})")
+
+    # ── projetar para um DTO ──────────────────────────────────────────
+    def _projetar_dto(self, pedido, ent):
+        """`transacoes.Select(t => new TransacaoSeguraDto { ... }).ToList()`
+
+        A CLASSE DE DESTINO NÃO É PALPITE: o enunciado escreve o nome
+        dela — "Projetar a lista de transações para 'TransacaoSeguraDto'".
+        Procurar o nome escrito acerta sempre; pedir para uma cabeça
+        adivinhar entre as classes do projeto acerta quase sempre. Entre
+        as duas, a busca de texto.
+
+        A cabeça da OPERAÇÃO continua sendo rede — é ela que entende que
+        "Projetar/Converter/Mapear ... para X" é isto e não um `Select` de
+        uma coluna só. O que sai da rede é a decisão; o que entra no
+        código é comparação de nomes.
+        """
+        alvos = [d for d in dtos_de(self.proj) if d != ent]
+        if not alvos:
+            return None
+        plano = _plano(pedido)
+        destino = next((d for d in alvos if _plano(d) in plano), None)
+        if destino is None:
+            citado = valor_citado(pedido)
+            if citado:
+                destino = next((d for d in alvos
+                                if _plano(d) == _plano(citado)), None)
+        if destino is None and len(alvos) == 1:
+            # UM DTO SÓ NO PROJETO: não há ambiguidade para resolver.
+            destino = alvos[0]
+        if destino is None:
+            return None
+        lista = self.lista_de[ent]
+        corpo, faltou = mapear_dto(self.proj.opcoes_de(ent),
+                                   self.proj.opcoes_de(destino),
+                                   self.proj.enums, x=lista[0])
+        if not corpo:
+            return None
+        # O QUE NÃO CASOU FICA ESCRITO NO CÓDIGO, como comentário. Deixar
+        # um campo de fora calado é entregar um DTO pela metade que
+        # compila — e o buraco só aparece na tela do usuário.
+        aviso = f"  /* sem origem: {', '.join(faltou)} */" if faltou else ""
+        return (f"{lista}.Select({lista[0]} => new {destino} "
+                f"{{ {', '.join(corpo)} }}){aviso}.ToList()")
 
     # ── montar ────────────────────────────────────────────────────────
     def montar(self, pedido):
         """O LINQ, pronto para colar no projeto. `None` se não há o que consultar."""
         if not self.pronto():
             return None
+        # A CASCA SAI AQUI, UMA VEZ SÓ. Descascar dentro de cada cabeça
+        # daria quatro versões da mesma frase e quatro jeitos de
+        # discordarem. Daqui para baixo, `pedido` é texto de gente.
+        pedido = descascar(pedido) or pedido
         op, ent, prop, cmp_ = self.decidir(pedido)
+        if op == "projetar_dto":
+            return self._projetar_dto(pedido, ent)
+        # DUAS CONDIÇÕES, quando a frase pede duas e a operação aceita
+        # predicado. `Sum` e `GroupBy` não comparam com nada: nelas a
+        # segunda condição, se houver, é um `Where` à parte — o caminho
+        # que já existia.
+        if op in ("todos", "existe"):
+            # a restrição no substantivo vem ANTES das duas condições: se
+            # a frase tem verbo separando, ela não é `A && B`
+            wa = self._restricao_e_predicado(pedido, ent, op)
+            if wa:
+                return wa
+        if OPERACOES[op].get("aceita_predicado"):
+            duas = self._duas_condicoes(pedido, ent, op)
+            if duas:
+                lista = self.lista_de[ent]
+                molde = OPERACOES[op]["linq"]
+                # O MOLDE É PREENCHIDO COM UM MARCADOR e a condição única
+                # é trocada pelas duas. Recortar o texto do molde à mão
+                # (procurar o parêntese, o "=>") já comeu o `.ToList()` do
+                # fim numa primeira tentativa — o molde sabe a forma dele,
+                # e quem monta não precisa adivinhar onde ela termina.
+                alvo = molde.format(lista=lista, x=lista[0],
+                                    P="\x00P", op="\x00O", lit="\x00L")
+                marca = f"{lista[0]}.\x00P \x00O \x00L"
+                if marca not in alvo:
+                    return None
+                return alvo.replace(marca, duas)
         # SE A FRASE DIZ O OPERADOR, QUEM MANDA É A FRASE.
         #
         # "cliente nome IGUAL A Ana Silva" não é palpite de ninguém: está
@@ -409,13 +665,28 @@ class Consultor:
         op_dito = achar_comparacao(pedido)[0]
         if op_dito is not None:
             cmp_ = op_dito
+        # E SE A FRASE NÃO DIZ O OPERADOR MAS DIZ O VALOR ENTRE ASPAS,
+        # o operador é `==`. O enunciado escreve `da cliente "Ana Silva"`,
+        # `status 'Concluida'`, `categoria 'Tecnologia'` — ninguém escreve
+        # "igual a" ali, e ninguém quer dizer outra coisa.
+        #
+        # Sem isto, medido: a frase com o valor escrito em letras saía
+        # `linq: None` ("não achei com que comparar"), com a resposta
+        # inteira dentro das aspas a dois passos de distância.
+        citado = valor_citado(pedido)
+        if op_dito is None and citado:
+            cmp_ = "=="
         # SÓ ONDE O MOLDE USA UM VALOR. `GroupBy(x => x.P)` e
         # `Sum(x => x.P)` não comparam com nada — se "canceladas" aparecer
         # num "agrupa as transações canceladas por categoria", o valor não
         # é a resposta, é ruído, e deixar ele trocar a propriedade estraga
         # um agrupamento que estava certo. Foi o que aconteceu: `agrupar`
         # errou 4 de 10 antes deste guarda.
-        if "{lit}" in OPERACOES[op]["linq"] and op_dito is None:
+        # `citado` BLOQUEIA o palpite. `pelo_valor` casa o texto com nomes
+        # de enum por parentesco de trigrama, e em "um cliente inexistente"
+        # ele casou `Pendente` com "inexistente" — as duas terminam em
+        # "ente". Onde o valor está escrito, não há o que adivinhar.
+        if "{lit}" in OPERACOES[op]["linq"] and op_dito is None and not citado:
             e2, p2, lit2 = self.pelo_valor(pedido)
             if p2 is not None:
                 ent, prop, cmp_ = e2, p2, "=="
@@ -438,7 +709,7 @@ class Consultor:
             antes, depois = metades(pedido, op)
             prop, prop_f = self.par_de_propriedades(
                 self.rede.resumo(self.peneira.ids(antes)),
-                self.rede.resumo(self.peneira.ids(depois)), ent)
+                self.rede.resumo(self.peneira.ids(depois)), ent, op=op)
             filtro = self._filtro(pedido, ent, prop, op_dito, prop_f)
             if filtro:
                 return " ".join(
@@ -466,14 +737,17 @@ class Consultor:
         """As decisões separadas — para mostrar o porquê, não só o quê."""
         if not self.pronto():
             return {}
+        pedido = descascar(pedido) or pedido
         op, ent, prop, cmp_ = self.decidir(pedido)
         op_dito = achar_comparacao(pedido)[0]
+        if op_dito is None and valor_citado(pedido):
+            cmp_ = "=="            # o mesmo de `montar`: o escrito manda
         filtro = None
         if not OPERACOES[op].get("aceita_predicado") and self._ha_filtro(pedido, op_dito):
             antes, depois = metades(pedido, op)
             prop, prop_f = self.par_de_propriedades(
                 self.rede.resumo(self.peneira.ids(antes)),
-                self.rede.resumo(self.peneira.ids(depois)), ent)
+                self.rede.resumo(self.peneira.ids(depois)), ent, op=op)
             filtro = self._filtro(pedido, ent, prop, op_dito, prop_f)
         return {"operacao": op, "lista": self.lista_de[ent], "classe": ent,
                 "propriedade": prop.nome, "tipo": prop.bruto,
@@ -522,6 +796,17 @@ def treinar(proj, epocas=14, taxa=0.25, semente=42, pares=None, avisar=None):
     exemplos = []
     for p in pares:
         cs = cands.get(p["entidade"], [])
+        # PROJETAR PARA UM DTO não tem propriedade de origem: o alvo é a
+        # classe inteira. Estes exemplos ensinam a OPERAÇÃO e a LISTA, e
+        # deixam a cabeça da propriedade em paz (`k_certo=None`).
+        if p["operacao"] == "projetar_dto":
+            antes, depois = metades(p["pedido"], p["operacao"])
+            exemplos.append((peneira.ids(p["pedido"]), OPS.index(p["operacao"]),
+                             CMPS.index("nenhuma"),
+                             [c for _, c in cs], None, ids_lista,
+                             entidades.index(p["entidade"]),
+                             peneira.ids(antes), peneira.ids(depois), None))
+            continue
         k = [i for i, (pr, _) in enumerate(cs) if pr.nome == p["propriedade"]]
         if not k:
             continue
