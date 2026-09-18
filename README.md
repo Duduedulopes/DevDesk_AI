@@ -10,13 +10,13 @@
 ## 🌟 Sobre
 
 
-DevDesk AI é um ambiente de desenvolvimento inteiro na máquina: editor Monaco, chat que age, terminal, busca, GitHub e paletas, com um agente que conserta e cria código.
+DevDesk AI é um ambiente de desenvolvimento inteiro na máquina: editor Monaco, chat que age, terminal, busca, GitHub e paletas, com um agente que conserta e cria códigos.
 
 
-**Roda inteiro na máquina.** O padrão é local e sem nuvem: redes próprias em NumPy, grep no projeto, `dotnet build` e `ast.parse` como juízes. APIs externas (ChatGPT, Gemini, Claude, GitHub privado) só entram com chave sua — e o seletor deixa claro quando o chat sai da máquina.
+**Roda inteiro na máquina.** O padrão é local e sem nuvem: redes próprias em NumPy, grep no projeto, `dotnet build` e `ast.parse` como juízes. APIs externas (ChatGPT, Gemini, Claude, GitHub privado) só entram com chave sua.
 
 
-O **motor** é escrito do zero, em NumPy: camada, ativação, custo e retropropagação são código próprio e auditáveis, com o gradiente conferido contra a derivada numérica. Para os **olhos e os ouvidos** (CLIP e Whisper) o projeto usa pesos pré-treinados, baixados uma vez e rodando offline dali em diante — treinar percepção do zero exige bilhões de exemplos, e esse custo não se repete.
+O **motor** é escrito do zero, em NumPy: camada, ativação, custo e retropropagação são código próprio e auditáveis, com o gradiente conferido contra a derivada numérica. Para os **olhos e os ouvidos** (CLIP e Whisper) o projeto usa pesos pré-treinados, baixados uma vez e rodando offline dali em diante.
 
 
 ## ✨ Características
