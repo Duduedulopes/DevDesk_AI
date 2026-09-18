@@ -10,7 +10,7 @@
 ## 🌟 Sobre
 
 
-DevDesk AI é um ambiente de desenvolvimento inteiro na máquina: editor Monaco, chat que age, terminal, busca, GitHub e paletas — com um agente que conserta código do jeito verificável: julga antes, propõe diff, o juiz confirma, você aceita ou recusa.
+DevDesk AI é um ambiente de desenvolvimento inteiro na máquina: editor Monaco, chat que age, terminal, busca, GitHub e paletas, com um agente que conserta código do jeito verificável: julga antes, propõe diff, o juiz confirma, você aceita ou recusa.
 
 
 **Roda inteiro na máquina.** O padrão é local e sem nuvem: redes próprias em NumPy, grep no projeto, `dotnet build` e `ast.parse` como juízes. APIs externas (ChatGPT, Gemini, Claude, GitHub privado) só entram com chave sua — e o seletor deixa claro quando o chat sai da máquina.
@@ -52,7 +52,7 @@ erro do juiz ──▶ PERCEBER (linha, código, mensagem)
                    VER O QUE VOLTOU ──▶ juiz de novo ──▶ provado? ──▶ diff + [s/N]
 ```
 
-A política escolhe a FERRAMENTA; o argumento sai do estado por `==` (nunca palpite da rede). A régua é sempre a mesma que reprovou o código — e cada peça nova só entra se bater a regra numa pasta que o treino não viu (medido: regra 5/5 × rede 5/5 no caminho do painel; Python 321/339, C# 3/3).
+A política escolhe a FERRAMENTA; o argumento sai do estado por `==` (nunca palpite da rede). A régua é sempre a mesma que reprovou o código, e cada peça nova só entra se bater a regra numa pasta que o treino não viu (medido: regra 5/5 × rede 5/5 no caminho do painel; Python 321/339, C# 3/3).
 
 
 ### Níveis de Resolução
@@ -211,18 +211,16 @@ python testar_modelos.py
 
 
 > As duas linhas de percepção são a única coisa que o projeto não escreveu:
-> são pesos pré-treinados, baixados uma vez e usados offline. O resto —
-> motor, agente, moldes, Tab, compressão — é código deste repositório.
+> são pesos pré-treinados, baixados uma vez e usados offline.
+> motor, agente, moldes, Tab, compressão, é código deste repositório.
 
 
 ## 📝 Contribuindo
 
 
 Este é um projeto de estudo, escrito para aprender como cada peça funciona
-por dentro. Se algo aqui te for útil, use à vontade — e se achar um erro,
+por dentro. Se algo aqui te for útil, use à vontade, e se achar um erro,
 abre uma issue: erro medido vale mais que elogio.
-
-
 
 
 ## 📄 Licença
@@ -235,11 +233,6 @@ Este projeto está sob a licença MIT. Veja o arquivo LICENSE para mais detalhes
 
 
 **Eduardo Lopes** - 2026
-
-
-
-
-**DevDesk AI** - A IDE local cujo agente prova o conserto antes de pedir para gravar.
 
 
 ## 🌐 Site do Projeto
