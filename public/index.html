@@ -3,8 +3,8 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>DevDesk AI — o assistente de suporte que aprende na sua máquina</title>
-<meta name="description" content="Assistente de suporte técnico e desenvolvimento com rede neural própria, escrita do zero em NumPy. Entende prints, áudio, vídeo e texto — e roda inteiro na sua máquina.">
+<title>DevDesk AI — a IDE local cujo agente prova o conserto</title>
+<meta name="description" content="IDE com agente próprio rodando na máquina: editor Monaco, diff com juiz, Tab fantasma, Cmd+K, fila multi-arquivo. Redes escritas do zero em NumPy.">
 <style>
   :root{
     --fundo:#0D120E; --painel:#141A15; --painel-alto:#1A221B;
@@ -203,7 +203,7 @@
       <a href="#camadas">Camadas</a>
       <a href="#cerebro">Rede</a>
       <a href="#estado">Estado</a>
-      <a href="#painel">Painel</a>
+      <a href="#painel">IDE</a>
       <a href="https://github.com/Duduedulopes/DevDesk_AI">GitHub</a>
     </nav>
   </div>
@@ -218,8 +218,8 @@
 █   █ █      █ █     █   █ █         █ █  █       █   █   █
 ████▀ █████   █      ████▀ █████ ████  █   █    █████ █   █</pre>
     <small>inteligência artificial nativa</small>
-    <span class="badge"><span class="ponto"></span>Roda 100% na sua máquina · sem nuvem · sem chave</span>
-    <h1>Do chamado à linha de código: <span class="acento">o seu assistente para programar soluções</span></h1>
+    <span class="badge"><span class="ponto"></span>Local por padrão · juiz antes do diff · aceitar ou recusar</span>
+    <h1>A IDE em que o agente <span class="acento">prova o conserto antes de pedir para gravar</span></h1>
   </div>
 </div>
 
@@ -298,24 +298,21 @@
 
 <section id="camadas">
   <div class="kicker">Como funciona</div>
-  <h2>Sete camadas, uma única jornada</h2>
-  <p class="lead">Do problema que chega — em qualquer formato — até a solução com caminho de volta. Cada etapa pode se abortar e passar a vez para a próxima.</p>
+  <h2>O laço do agente, não sete camadas</h2>
+  <p class="lead">Do erro do juiz até o diff: cada etapa com entrada e saída exatas. A política escolhe a <b>ferramenta</b>; o argumento sai do estado por <b>==</b>, nunca palpite. E a régua é sempre a mesma que reprovou o código.</p>
 
   <div class="pilha">
-    <div class="degrau"><span class="num">1</span><div><div class="t">Percepção</div><div class="d">texto · print · áudio · vídeo — tudo vira texto + vetor. CNN do zero · FFT</div></div></div>
-    <div class="degrau"><span class="num">2</span><div><div class="t">Entendimento</div><div class="d">classificador: qual é o problema?</div></div></div>
-    <div class="degrau"><span class="num">3</span><div><div class="t">Conhecimento</div><div class="d">base de casos: já vimos isso antes?</div></div></div>
-    <div class="degrau"><span class="num">4</span><div><div class="t">Investigação</div><div class="d">colher evidência — PowerShell, arquivos, logs, projeto (só leitura)</div></div></div>
-    <div class="degrau"><span class="num">5</span><div><div class="t">Ação</div><div class="d">risco declarado · confirmação · registro · desfazer</div></div></div>
-    <div class="degrau"><span class="num">6</span><div><div class="t">Aprendizado</div><div class="d">cada chamado fechado vira exemplo rotulado — trava contra esquecimento</div></div></div>
-    <div class="degrau"><span class="num">7</span><div><div class="t">Painel</div><div class="d">a pasta acessível, o histórico, as ações pendentes</div></div></div>
+    <div class="degrau"><span class="num">1</span><div><div class="t">Perceber</div><div class="d">linha, código e mensagem do erro — o onde e o quê já vêm dados</div></div></div>
+    <div class="degrau"><span class="num">2</span><div><div class="t">Escolher</div><div class="d">a ferramenta: ler · procurar · consertar · julgar · terminal (rede ou regra)</div></div></div>
+    <div class="degrau"><span class="num">3</span><div><div class="t">Usar</div><div class="d">moldes com resposta exata — recortar, renomear, completar; gerar letra por letra é proibido aqui</div></div></div>
+    <div class="degrau"><span class="num">4</span><div><div class="t">Ver</div><div class="d">o juiz de novo sobre o conserto: sumiu o erro e nada nasceu na linha? vira diff + [s/N]</div></div></div>
   </div>
 
   <div class="codigo">
     <div class="tira"><i></i><i></i><i></i></div>
     <pre><span class="cm"># a espinha do sistema, em uma linha</span>
-texto · print · áudio · vídeo <span class="kw">→</span> percepção <span class="kw">→</span> entendimento <span class="kw">→</span> conhecimento
-   <span class="kw">→</span> investigação <span class="kw">→</span> ação <span class="kw">→</span> aprendizado <span class="kw">→</span> painel</pre>
+erro do juiz <span class="kw">→</span> perceber <span class="kw">→</span> escolher <span class="kw">→</span> usar
+   <span class="kw">→</span> julgar de novo <span class="kw">→</span> provado? <span class="kw">→</span> diff + [s/N]</pre>
   </div>
 </section>
 
@@ -330,6 +327,8 @@ texto · print · áudio · vídeo <span class="kw">→</span> percepção <span
     <div class="numero"><div class="v">67,7%</div><div class="r">acerto em validação cruzada</div></div>
     <div class="numero"><div class="v">0,90</div><div class="r">limiar de confiança calibrado</div></div>
     <div class="numero"><div class="v">799/800</div><div class="r">conjunto de guarda preservado</div></div>
+    <div class="numero"><div class="v">321/339</div><div class="r">consertos Python provados (regra × rede)</div></div>
+    <div class="numero"><div class="v">3/3</div><div class="r">consertos C# provados em pasta inédita</div></div>
   </div>
 </section>
 
@@ -345,9 +344,11 @@ texto · print · áudio · vídeo <span class="kw">→</span> percepção <span
         <li>Motor da rede: Camada, Rede, Sigmoid, Softmax, Entropia Cruzada — tudo NumPy</li>
         <li>Gradiente conferido numericamente (reprova erro de propósito)</li>
         <li>Classificador do domínio de suporte, retreinado e medido</li>
-        <li>Discussão <b style="color:var(--ok)">“Errei? Clique na intenção certa”</b> — ensina na hora</li>
-        <li>Fluxo de pedidos: entende “quero criar um projeto” e desenha o plano</li>
-        <li>Painel web local, estilo terminal anos 90</li>
+        <li>Agente com diff, juiz e <b style="color:var(--ok)">aceitar/recusar</b> — Python e C#</li>
+        <li>IDE: Monaco, Explorer, terminal, paletas, busca, Tab fantasma, Cmd+K</li>
+        <li>Fila multi-arquivo, <b style="color:var(--ok)">`regras.md`</b>, GitHub e seletor de agente</li>
+        <li>Ação com risco, confirmação e desfazer</li>
+        <li>Integração VS Code (abrir aqui e lá)</li>
       </ul>
     </div>
     <div class="bloco nao">
@@ -356,18 +357,17 @@ texto · print · áudio · vídeo <span class="kw">→</span> percepção <span
         <li>CNN do zero no MNIST — meta: bater os 95,94% da rede densa (23.860 parâmetros)</li>
         <li>OCR de print de tela (achar texto antes de reconhecer caractere)</li>
         <li>Áudio: FFT → espectrograma → a mesma CNN</li>
-        <li>Base de casos N1 ponta a ponta, só texto</li>
-        <li>Ação com risco, confirmação e desfazer</li>
-        <li>Integração VS Code</li>
+        <li>Instalador de extensões de terceiros</li>
+        <li>Chamadas reais de LLM e GitHub privado (a estrutura está pronta, faltam as chaves)</li>
       </ul>
     </div>
   </div>
 </section>
 
 <section class="tern" id="painel" style="border:none">
-  <div class="kicker">O painel</div>
+  <div class="kicker">A IDE</div>
   <h2>Ver por dentro</h2>
-  <p class="lead">A conversa acontece numa tela estilo Devin com tema retrô de terminal — e o mais importante: quando a rede acerta com confiança, <b>a resposta vem na ponta da língua, sem precisar ver a rede por dentro</b>. Quando ela erra, mostra exatamente o que calculou.</p>
+  <p class="lead">Editor Monaco com abas, Explorer, chat que age à direita e terminal embaixo — e o mais importante: quando o agente propõe, <b>vem diff com aceitar/recusar</b>, um por um ou em lote. Tab completa só com o que o projeto já escreveu; <b>Cmd+K</b> extrai método e variável com molde e juiz.</p>
   <div class="codigo">
     <div class="tira"><i></i><i></i><i></i></div>
     <pre><span class="kw">&gt;</span> quero criar um projeto
@@ -400,7 +400,7 @@ texto · print · áudio · vídeo <span class="kw">→</span> percepção <span
 <footer>
   <div class="roda">
     <a class="logo" href="#topo"><span class="ic">▮</span>DevDesk<span class="aro">_AI</span></a>
-    <p>Um assistente de suporte técnico e desenvolvimento, com rede neural própria e privacidade total — feito para entender a sua máquina, e não para enviar os seus dados para lugar nenhum.</p>
+    <p>Uma IDE local com agente próprio e privacidade total — feita para provar o conserto antes de pedir para gravar, e não para enviar os seus dados para lugar nenhum.</p>
     <div class="limks">
       <a href="https://github.com/Duduedulopes/DevDesk_AI">GitHub</a>
       <a href="https://github.com/Duduedulopes/DevDesk_AI/blob/main/README.md">Documentação</a>
