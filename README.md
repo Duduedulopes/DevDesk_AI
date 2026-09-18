@@ -1,6 +1,6 @@
 # DevDesk AI 🤖
 
-> **IDE local com agente próprio: edita, julga, prova e pede para gravar**
+> **IDE local com agente próprio**
 
 
 ![DevDesk AI](https://img.shields.io/badge/DevDesk-AI-green)
