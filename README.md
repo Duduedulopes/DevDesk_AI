@@ -10,7 +10,7 @@
 ## 🌟 Sobre
 
 
-DevDesk AI é um ambiente de desenvolvimento inteiro na máquina: editor Monaco, chat que age, terminal, busca, GitHub e paletas, com um agente que conserta código.
+DevDesk AI é um ambiente de desenvolvimento inteiro na máquina: editor Monaco, chat que age, terminal, busca, GitHub e paletas, com um agente que conserta e cria código.
 
 
 **Roda inteiro na máquina.** O padrão é local e sem nuvem: redes próprias em NumPy, grep no projeto, `dotnet build` e `ast.parse` como juízes. APIs externas (ChatGPT, Gemini, Claude, GitHub privado) só entram com chave sua — e o seletor deixa claro quando o chat sai da máquina.
